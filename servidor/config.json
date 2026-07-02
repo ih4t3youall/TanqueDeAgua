@@ -1,0 +1,6 @@
+{
+  "modo": "AUTO",
+  "manual_pump": false,
+  "nivel_alto_corte": 95.0,
+  "nivel_bajo_arranque": 60.0
+}

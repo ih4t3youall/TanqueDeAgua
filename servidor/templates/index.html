@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tanque de agua</title>
+  <style>
+    :root {
+      --bg: #0f172a; --card: #1e293b; --text: #e2e8f0; --muted: #94a3b8;
+      --agua: #38bdf8; --ok: #22c55e; --off: #64748b; --warn: #f59e0b; --err: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg);
+           color: var(--text); padding: 16px; }
+    h1 { font-size: 1.3rem; margin: 0 0 4px; }
+    .sub { color: var(--muted); font-size: .85rem; margin-bottom: 16px; }
+    .grid { display: grid; gap: 16px; max-width: 720px; margin: 0 auto;
+            grid-template-columns: 1fr 1fr; }
+    .card { background: var(--card); border-radius: 14px; padding: 18px; }
+    .card.full { grid-column: 1 / -1; }
+    .label { color: var(--muted); font-size: .8rem; text-transform: uppercase;
+             letter-spacing: .04em; }
+    /* Tanque */
+    .tank-wrap { display: flex; align-items: center; gap: 18px; }
+    .tank { width: 90px; height: 160px; border: 3px solid var(--muted);
+            border-radius: 8px; position: relative; overflow: hidden; background: #0b1220; }
+    .water { position: absolute; bottom: 0; left: 0; right: 0; background: var(--agua);
+             transition: height .6s ease; }
+    .pct { font-size: 2.4rem; font-weight: 700; }
+    .dist { color: var(--muted); font-size: .85rem; }
+    /* Estados */
+    .pill { display: inline-block; padding: 4px 12px; border-radius: 999px;
+            font-size: .8rem; font-weight: 600; }
+    .pill.on { background: rgba(34,197,94,.2); color: var(--ok); }
+    .pill.off { background: rgba(100,116,139,.25); color: var(--muted); }
+    .pill.online { background: rgba(34,197,94,.2); color: var(--ok); }
+    .pill.offline { background: rgba(239,68,68,.2); color: var(--err); }
+    /* Botones */
+    button { font: inherit; border: none; border-radius: 10px; padding: 10px 14px;
+             cursor: pointer; color: #fff; font-weight: 600; }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    .b-on { background: var(--ok); } .b-off { background: var(--err); }
+    .b-mode { background: #334155; } .b-mode.active { background: var(--agua); color: #06283a; }
+    .b-save { background: var(--agua); color: #06283a; }
+    input[type=number] { width: 80px; padding: 8px; border-radius: 8px; border: 1px solid #334155;
+                         background: #0b1220; color: var(--text); }
+    .field { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+    .muted { color: var(--muted); font-size: .8rem; }
+    .manual-controls { opacity: 1; transition: opacity .3s; }
+    .manual-controls.disabled { opacity: .35; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <h1>💧 Tanque de agua</h1>
+  <div class="sub" id="conn">Conectando…</div>
+
+  <div class="grid">
+    <!-- Nivel -->
+    <div class="card">
+      <div class="label">Nivel actual</div>
+      <div class="tank-wrap">
+        <div class="tank"><div class="water" id="water" style="height:0%"></div></div>
+        <div>
+          <div class="pct"><span id="pct">--</span>%</div>
+          <div class="dist">Distancia: <span id="dist">--</span> cm</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bomba -->
+    <div class="card">
+      <div class="label">Bomba</div>
+      <div style="margin:14px 0;"><span class="pill off" id="pumpPill">--</span></div>
+      <div class="label">Modo</div>
+      <div class="btn-row">
+        <button class="b-mode" id="btnAuto" onclick="setModo('AUTO')">AUTO</button>
+        <button class="b-mode" id="btnManual" onclick="setModo('MANUAL')">MANUAL</button>
+      </div>
+      <div class="manual-controls disabled" id="manualBox">
+        <div class="btn-row">
+          <button class="b-on" onclick="manual(true)">Encender</button>
+          <button class="b-off" onclick="manual(false)">Apagar</button>
+        </div>
+        <div class="muted" style="margin-top:6px;">Solo disponible en modo MANUAL</div>
+      </div>
+    </div>
+
+    <!-- Umbrales -->
+    <div class="card full">
+      <div class="label">Umbrales (modo AUTO)</div>
+      <div class="field">
+        <span style="width:160px;">Cortar al llegar a</span>
+        <input type="number" id="alto" min="0" max="100"> <span>%</span>
+      </div>
+      <div class="field">
+        <span style="width:160px;">Arrancar al bajar a</span>
+        <input type="number" id="bajo" min="0" max="100"> <span>%</span>
+      </div>
+      <div class="btn-row">
+        <button class="b-save" onclick="guardarUmbrales()">Guardar umbrales</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let cfg = {};
+
+async function refresh() {
+  try {
+    const r = await fetch('/api/state');
+    const s = await r.json();
+    cfg = s.config;
+
+    document.getElementById('pct').textContent = Math.round(s.level_pct);
+    document.getElementById('dist').textContent = Math.round(s.distance_cm);
+    document.getElementById('water').style.height = Math.max(0, Math.min(100, s.level_pct)) + '%';
+
+    // Conexión
+    const conn = document.getElementById('conn');
+    if (s.online) {
+      conn.innerHTML = '<span class="pill online">● En línea</span> ' +
+        '<span class="muted">señal ' + s.rssi + ' dBm · hace ' + s.segundos_desde_reporte + ' s</span>';
+    } else {
+      conn.innerHTML = '<span class="pill offline">● Sin conexión con el tanque</span>';
+    }
+
+    // Bomba
+    const pill = document.getElementById('pumpPill');
+    pill.textContent = s.pump_on ? 'ENCENDIDA' : 'APAGADA';
+    pill.className = 'pill ' + (s.pump_on ? 'on' : 'off');
+
+    // Modo
+    document.getElementById('btnAuto').classList.toggle('active', cfg.modo === 'AUTO');
+    document.getElementById('btnManual').classList.toggle('active', cfg.modo === 'MANUAL');
+    document.getElementById('manualBox').classList.toggle('disabled', cfg.modo !== 'MANUAL');
+
+    // Umbrales (solo si el campo no está enfocado, para no pisar lo que el usuario escribe)
+    if (document.activeElement.id !== 'alto')
+      document.getElementById('alto').value = cfg.nivel_alto_corte;
+    if (document.activeElement.id !== 'bajo')
+      document.getElementById('bajo').value = cfg.nivel_bajo_arranque;
+  } catch (e) {
+    document.getElementById('conn').textContent = 'No se puede contactar al servidor';
+  }
+}
+
+async function control(payload) {
+  await fetch('/api/control', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  refresh();
+}
+
+function setModo(m) { control({ modo: m }); }
+function manual(on) { control({ manual_pump: on }); }
+function guardarUmbrales() {
+  control({
+    nivel_alto_corte: parseFloat(document.getElementById('alto').value),
+    nivel_bajo_arranque: parseFloat(document.getElementById('bajo').value)
+  });
+}
+
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

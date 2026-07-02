@@ -1,0 +1,51 @@
+<svg viewBox="0 0 740 470" xmlns="http://www.w3.org/2000/svg" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif">
+  <title>Dónde va el capacitor de 100uF en el nRF24</title>
+  <rect x="0" y="0" width="740" height="470" fill="#ffffff"/>
+  <text x="370" y="32" font-size="19" font-weight="700" fill="#2C2C2A" text-anchor="middle">Dónde va el capacitor (uno por módulo)</text>
+  <text x="370" y="54" font-size="12.5" fill="#5F5E5A" text-anchor="middle">100µF entre VCC y GND del nRF24, lo más pegado posible a los pines</text>
+
+  <rect x="60" y="200" width="130" height="80" rx="8" fill="#fff" stroke="#EF9F27" stroke-width="2"/>
+  <text x="125" y="232" font-size="13" font-weight="700" fill="#2C2C2A" text-anchor="middle">AMS1117</text>
+  <text x="125" y="250" font-size="10" fill="#5F5E5A" text-anchor="middle">5V → 3.3V</text>
+  <text x="196" y="222" font-size="10" fill="#BA7517">OUT (3.3V)</text>
+  <text x="196" y="270" font-size="10" fill="#2C2C2A">GND</text>
+
+  <rect x="470" y="120" width="210" height="250" rx="10" fill="#fff" stroke="#888780" stroke-width="2"/>
+  <rect x="470" y="120" width="210" height="30" rx="10" fill="#7F77DD"/>
+  <text x="575" y="141" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">nRF24L01</text>
+  <g font-size="11.5" fill="#5F5E5A">
+    <text x="486" y="176">CE · CSN · SCK</text>
+    <text x="486" y="196">MOSI · MISO</text>
+    <text x="486" y="216">IRQ (libre)</text>
+  </g>
+  <line x1="470" y1="300" x2="452" y2="300" stroke="#EF9F27" stroke-width="4"/>
+  <text x="486" y="304" font-size="13" font-weight="700" fill="#BA7517">VCC (3.3V)</text>
+  <line x1="470" y1="340" x2="452" y2="340" stroke="#2C2C2A" stroke-width="4"/>
+  <text x="486" y="344" font-size="13" font-weight="700" fill="#2C2C2A">GND</text>
+
+  <path d="M190,215 L300,215 L300,300 L452,300" fill="none" stroke="#EF9F27" stroke-width="3"/>
+  <path d="M190,265 L250,265 L250,340 L452,340" fill="none" stroke="#2C2C2A" stroke-width="3"/>
+
+  <circle cx="390" cy="300" r="4.5" fill="#EF9F27"/>
+  <circle cx="390" cy="340" r="4.5" fill="#2C2C2A"/>
+
+  <line x1="390" y1="300" x2="390" y2="312" stroke="#E24B4A" stroke-width="2.5"/>
+  <rect x="372" y="312" width="36" height="30" rx="4" fill="#E6F1FB" stroke="#378ADD" stroke-width="2"/>
+  <text x="390" y="331" font-size="10" font-weight="700" fill="#185FA5" text-anchor="middle">100µF</text>
+  <rect x="372" y="336" width="36" height="6" rx="2" fill="#888780"/>
+  <text x="415" y="312" font-size="15" font-weight="700" fill="#E24B4A">+</text>
+  <text x="416" y="346" font-size="15" font-weight="700" fill="#5F5E5A">–</text>
+  <line x1="390" y1="342" x2="390" y2="340" stroke="#2C2C2A" stroke-width="2.5"/>
+
+  <path d="M300,395 L388,315" fill="none" stroke="#E24B4A" stroke-width="1.5"/>
+  <polygon points="388,315 379,318 384,323" fill="#E24B4A"/>
+  <text x="150" y="400" font-size="12" font-weight="700" fill="#E24B4A">Pata LARGA (+) → VCC 3.3V</text>
+  <path d="M300,432 L388,340" fill="none" stroke="#5F5E5A" stroke-width="1.5"/>
+  <polygon points="388,340 379,341 383,347" fill="#5F5E5A"/>
+  <text x="150" y="437" font-size="12" font-weight="700" fill="#5F5E5A">Pata CORTA / franja (–) → GND</text>
+
+  <rect x="470" y="392" width="255" height="60" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="1.5"/>
+  <text x="484" y="412" font-size="11" font-weight="700" fill="#854F0B">Respetá la polaridad</text>
+  <text x="484" y="428" font-size="10.5" fill="#854F0B">Al revés se puede dañar o reventar.</text>
+  <text x="484" y="443" font-size="10.5" fill="#854F0B">Uno igual en el nRF24 del master.</text>
+</svg>

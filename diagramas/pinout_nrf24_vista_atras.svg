@@ -1,0 +1,45 @@
+<svg viewBox="0 0 640 540" xmlns="http://www.w3.org/2000/svg" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif">
+  <title>Pinout del nRF24L01 visto desde atras (lado soldaduras)</title>
+  <rect x="0" y="0" width="640" height="540" fill="#ffffff"/>
+  <text x="320" y="32" font-size="19" font-weight="700" fill="#2C2C2A" text-anchor="middle">nRF24 — vista de ATRÁS (lado soldaduras)</text>
+  <text x="320" y="54" font-size="12.5" fill="#5F5E5A" text-anchor="middle">El lado liso, con la ANTENA hacia ARRIBA. GND = esquina inferior DERECHA</text>
+
+  <rect x="296" y="74" width="48" height="20" rx="4" fill="#888780"/>
+  <text x="320" y="89" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">ANTENA</text>
+  <line x1="320" y1="94" x2="320" y2="114" stroke="#888780" stroke-width="3"/>
+
+  <rect x="150" y="114" width="340" height="250" rx="10" fill="#fff" stroke="#888780" stroke-width="2"/>
+  <text x="320" y="210" font-size="12" fill="#5F5E5A" text-anchor="middle">(lado liso / soldaduras)</text>
+
+  <circle cx="200" cy="300" r="14" fill="#fff" stroke="#B4B2A9" stroke-width="2" stroke-dasharray="3 3"/>
+  <text x="200" y="304" font-size="10" font-weight="700" fill="#5F5E5A" text-anchor="middle">IRQ</text>
+  <circle cx="270" cy="300" r="14" fill="#fff" stroke="#888780" stroke-width="2"/>
+  <text x="270" y="304" font-size="9" font-weight="700" fill="#2C2C2A" text-anchor="middle">MOSI</text>
+  <circle cx="340" cy="300" r="14" fill="#fff" stroke="#888780" stroke-width="2"/>
+  <text x="340" y="304" font-size="10" font-weight="700" fill="#2C2C2A" text-anchor="middle">CSN</text>
+  <circle cx="410" cy="300" r="14" fill="#FAECE7" stroke="#E24B4A" stroke-width="2"/>
+  <text x="410" y="304" font-size="10" font-weight="700" fill="#993C1D" text-anchor="middle">VCC</text>
+
+  <circle cx="200" cy="340" r="14" fill="#E1F5EE" stroke="#1D9E75" stroke-width="2"/>
+  <text x="200" y="344" font-size="9" font-weight="700" fill="#0F6E56" text-anchor="middle">MISO</text>
+  <circle cx="270" cy="340" r="14" fill="#EEEDFE" stroke="#7F77DD" stroke-width="2"/>
+  <text x="270" y="344" font-size="10" font-weight="700" fill="#534AB7" text-anchor="middle">SCK</text>
+  <circle cx="340" cy="340" r="14" fill="#EAF3DE" stroke="#639922" stroke-width="2"/>
+  <text x="340" y="344" font-size="11" font-weight="700" fill="#3B6D11" text-anchor="middle">CE</text>
+  <circle cx="410" cy="340" r="15" fill="#2C2C2A" stroke="#2C2C2A" stroke-width="2"/>
+  <text x="410" y="344" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">GND</text>
+
+  <path d="M520,400 L427,352" fill="none" stroke="#E24B4A" stroke-width="2"/>
+  <polygon points="427,352 438,353 431,361" fill="#E24B4A"/>
+  <text x="528" y="396" font-size="11.5" font-weight="700" fill="#E24B4A">esquina =</text>
+  <text x="528" y="411" font-size="11.5" font-weight="700" fill="#E24B4A">GND</text>
+
+  <text x="320" y="392" font-size="11" fill="#5F5E5A" text-anchor="middle">Fila del borde: MISO · SCK · CE · GND</text>
+  <text x="320" y="408" font-size="11" fill="#5F5E5A" text-anchor="middle">Fila interna:  IRQ · MOSI · CSN · VCC</text>
+
+  <rect x="40" y="440" width="560" height="78" rx="8" fill="#E6F1FB" stroke="#378ADD" stroke-width="1.5"/>
+  <text x="56" y="462" font-size="12.5" font-weight="700" fill="#185FA5">Antes de soldar, confirmá GND con el tester (continuidad):</text>
+  <text x="56" y="480" font-size="11.5" fill="#0C447C">Una punta a la rosca de la antena, la otra al pin de la esquina inferior derecha.</text>
+  <text x="56" y="496" font-size="11.5" fill="#0C447C">Si PITA, ese es GND y todo lo demás coincide. Desde GND salen, hacia la izquierda,</text>
+  <text x="56" y="512" font-size="11.5" fill="#0C447C">CE/SCK/MISO (borde) y arriba VCC/CSN/MOSI/IRQ.</text>
+</svg>

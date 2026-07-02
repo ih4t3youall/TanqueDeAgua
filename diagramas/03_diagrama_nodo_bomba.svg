@@ -1,0 +1,107 @@
+<svg viewBox="0 0 980 780" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+  <rect width="980" height="780" fill="#f8fafc"/>
+  <text x="490" y="36" text-anchor="middle" font-size="24" font-weight="700" fill="#0f172a">Nodo BOMBA — cableado (Arduino Nano)</text>
+  <text x="490" y="58" text-anchor="middle" font-size="13" fill="#64748b">Radio NRF24L01 + 2 relés sobre la botonera del contactor</text>
+
+  <!-- ===================== NANO ===================== -->
+  <rect x="120" y="110" width="170" height="270" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="205" y="138" text-anchor="middle" font-size="16" font-weight="700" fill="#166534">Arduino Nano</text>
+
+  <!-- pines der (a radio) -->
+  <g font-size="11" fill="#1e293b" text-anchor="end">
+    <circle cx="290" cy="165" r="4" fill="#dc2626"/><text x="284" y="169">3V3</text>
+    <circle cx="290" cy="190" r="4" fill="#111827"/><text x="284" y="194">GND</text>
+    <circle cx="290" cy="215" r="4" fill="#16a34a"/><text x="284" y="219">D9 (CE)</text>
+    <circle cx="290" cy="240" r="4" fill="#9333ea"/><text x="284" y="244">D10 (CSN)</text>
+    <circle cx="290" cy="265" r="4" fill="#0891b2"/><text x="284" y="269">D13 (SCK)</text>
+    <circle cx="290" cy="290" r="4" fill="#ca8a04"/><text x="284" y="294">D11 (MOSI)</text>
+    <circle cx="290" cy="315" r="4" fill="#db2777"/><text x="284" y="319">D12 (MISO)</text>
+  </g>
+  <!-- pines abajo (a relés) -->
+  <g font-size="10" fill="#1e293b" text-anchor="middle">
+    <circle cx="150" cy="380" r="4" fill="#dc2626"/><text x="150" y="398">5V</text>
+    <circle cx="180" cy="380" r="4" fill="#111827"/><text x="180" y="398">GND</text>
+    <circle cx="220" cy="380" r="4" fill="#16a34a"/><text x="220" y="398">D2</text>
+    <circle cx="255" cy="380" r="4" fill="#dc2626"/><text x="255" y="398">D3</text>
+  </g>
+
+  <!-- ===================== NRF24 ===================== -->
+  <rect x="420" y="120" width="160" height="240" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+  <text x="500" y="146" text-anchor="middle" font-size="14" font-weight="700" fill="#5b21b6">NRF24L01+</text>
+  <text x="500" y="162" text-anchor="middle" font-size="10" fill="#6d28d9">PA/LNA (base 3.3V)</text>
+  <g font-size="11" fill="#1e293b" text-anchor="start">
+    <circle cx="420" cy="190" r="4" fill="#dc2626"/><text x="428" y="194">VCC</text>
+    <circle cx="420" cy="215" r="4" fill="#111827"/><text x="428" y="219">GND</text>
+    <circle cx="420" cy="240" r="4" fill="#16a34a"/><text x="428" y="244">CE</text>
+    <circle cx="420" cy="265" r="4" fill="#9333ea"/><text x="428" y="269">CSN</text>
+    <circle cx="420" cy="290" r="4" fill="#0891b2"/><text x="428" y="294">SCK</text>
+    <circle cx="420" cy="315" r="4" fill="#ca8a04"/><text x="428" y="319">MOSI</text>
+    <circle cx="420" cy="340" r="4" fill="#db2777"/><text x="428" y="344">MISO</text>
+  </g>
+  <!-- wires nano -> nrf24 -->
+  <path d="M290,165 L355,165 L355,190 L420,190" fill="none" stroke="#dc2626" stroke-width="2.5"/>
+  <path d="M290,190 L345,190 L345,215 L420,215" fill="none" stroke="#111827" stroke-width="2.5"/>
+  <path d="M290,215 L335,215 L335,240 L420,240" fill="none" stroke="#16a34a" stroke-width="2.5"/>
+  <path d="M290,240 L325,240 L325,265 L420,265" fill="none" stroke="#9333ea" stroke-width="2.5"/>
+  <path d="M290,265 L380,265 L380,290 L420,290" fill="none" stroke="#0891b2" stroke-width="2.5"/>
+  <path d="M290,290 L370,290 L370,315 L420,315" fill="none" stroke="#ca8a04" stroke-width="2.5"/>
+  <path d="M290,315 L360,315 L360,340 L420,340" fill="none" stroke="#db2777" stroke-width="2.5"/>
+
+  <!-- ===================== MODULO RELES ===================== -->
+  <rect x="120" y="440" width="240" height="120" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="240" y="465" text-anchor="middle" font-size="14" font-weight="700" fill="#92400e">Módulo 2 relés</text>
+  <g font-size="10" fill="#1e293b" text-anchor="middle">
+    <circle cx="150" cy="440" r="4" fill="#dc2626"/><text x="150" y="430">VCC</text>
+    <circle cx="180" cy="440" r="4" fill="#111827"/><text x="180" y="430">GND</text>
+    <circle cx="220" cy="440" r="4" fill="#16a34a"/><text x="220" y="430">IN1</text>
+    <circle cx="255" cy="440" r="4" fill="#dc2626"/><text x="255" y="430">IN2</text>
+  </g>
+  <text x="240" y="490" text-anchor="middle" font-size="11" fill="#92400e">RELÉ 1 = START (verde)  ·  RELÉ 2 = STOP (rojo)</text>
+  <!-- salidas de contactos -->
+  <g font-size="10" fill="#1e293b">
+    <text x="150" y="548" text-anchor="middle">R1: COM–NO</text>
+    <text x="300" y="548" text-anchor="middle">R2: COM–NC</text>
+  </g>
+  <circle cx="150" cy="560" r="4" fill="#16a34a"/>
+  <circle cx="300" cy="560" r="4" fill="#dc2626"/>
+
+  <!-- wires nano -> relés -->
+  <path d="M150,384 L150,436" fill="none" stroke="#dc2626" stroke-width="2.5"/>
+  <path d="M180,384 L180,436" fill="none" stroke="#111827" stroke-width="2.5"/>
+  <path d="M220,384 L220,436" fill="none" stroke="#16a34a" stroke-width="2.5"/>
+  <path d="M255,384 L255,436" fill="none" stroke="#dc2626" stroke-width="2.5"/>
+
+  <!-- ===================== BOTONERA / CONTACTOR ===================== -->
+  <rect x="500" y="430" width="430" height="300" rx="12" fill="#ffffff" stroke="#334155" stroke-width="2"/>
+  <text x="715" y="458" text-anchor="middle" font-size="15" font-weight="700" fill="#0f172a">Botonera de la bomba (circuito de mando)</text>
+  <text x="715" y="476" text-anchor="middle" font-size="11" fill="#64748b">NO tocar la potencia — solo el circuito de los botones</text>
+
+  <!-- BOTON VERDE -->
+  <rect x="540" y="510" width="150" height="80" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <circle cx="615" cy="540" r="14" fill="#22c55e" stroke="#166534" stroke-width="2"/>
+  <text x="615" y="575" text-anchor="middle" font-size="12" font-weight="700" fill="#166534">VERDE (marcha)</text>
+  <!-- relé1 en paralelo -->
+  <path d="M150,560 L150,640 L540,640 L540,560" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-dasharray="6 4"/>
+  <line x1="540" y1="560" x2="540" y2="510" stroke="#16a34a" stroke-width="2.5" stroke-dasharray="6 4"/>
+  <path d="M690,520 L740,520 L740,640 L540,640" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="2 3"/>
+  <text x="345" y="632" text-anchor="middle" font-size="11" fill="#15803d" font-weight="600">RELÉ 1 en PARALELO al botón verde (COM-NO)</text>
+
+  <!-- BOTON ROJO -->
+  <rect x="740" y="510" width="150" height="80" rx="8" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+  <circle cx="815" cy="540" r="14" fill="#ef4444" stroke="#991b1b" stroke-width="2"/>
+  <text x="815" y="575" text-anchor="middle" font-size="12" font-weight="700" fill="#991b1b">ROJO (paro)</text>
+  <!-- relé2 en serie -->
+  <path d="M300,560 L300,690 L815,690 L815,590" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="6 4"/>
+  <text x="600" y="710" text-anchor="middle" font-size="11" fill="#b91c1c" font-weight="600">RELÉ 2 en SERIE con el botón rojo (COM-NC): lo abre un instante = "paro"</text>
+
+  <!-- ===================== NOTAS ===================== -->
+  <rect x="120" y="600" width="360" height="140" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="140" y="625" font-size="13" font-weight="700" fill="#0f172a">Conexiones</text>
+  <g font-size="11" fill="#334155">
+    <text x="140" y="648">RADIO: VCC→3V3 · GND→GND · CE→D9 · CSN→D10</text>
+    <text x="140" y="666">        SCK→D13 · MOSI→D11 · MISO→D12</text>
+    <text x="140" y="684">RELÉS: VCC→5V · GND→GND · IN1→D2 · IN2→D3</text>
+  </g>
+  <text x="140" y="708" font-size="10.5" fill="#b45309" font-weight="600">⚠ Cortá la energía del tablero antes de cablear los botones.</text>
+  <text x="140" y="725" font-size="10.5" fill="#7c3aed" font-weight="600">★ Tus botones físicos siguen funcionando a mano.</text>
+</svg>
