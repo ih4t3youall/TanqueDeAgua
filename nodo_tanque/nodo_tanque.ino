@@ -52,6 +52,13 @@ float DIST_TANQUE_VACIO_CM = 150.0;  // distancia medida con el tanque vacío
 float nivelAltoCorte    = 70.0;  // % de llenado -> CORTAR la bomba
 float nivelBajoArranque = 60.0;  // % de llenado -> ARRANCAR la bomba
 
+// --- MODO PRUEBA ---
+// En 1: IGNORA el sensor y alterna CARGAR (ON) / CORTAR (OFF) cada 5 s,
+//       para probar la radio y el relé con un patrón limpio.
+// Poné 0 para volver al funcionamiento normal por sensor.
+#define MODO_PRUEBA 0
+const unsigned long PRUEBA_MS = 5000;  // cada 5 s cambia de estado
+
 // ===========================================================================
 // 2) PINES
 // ===========================================================================
@@ -82,6 +89,8 @@ float  ultimaDistanciaCM = 0;
 unsigned long tSensor  = 0;
 unsigned long tRadio   = 0;
 unsigned long tServer  = 0;
+unsigned long tPrueba  = 0;      // temporizador del MODO PRUEBA
+bool          pruebaEstado = false;
 
 const unsigned long INTERVALO_SENSOR_MS = 1000;  // medir cada 1 s
 const unsigned long INTERVALO_RADIO_MS  = 1000;  // mandar orden cada 1 s
@@ -149,6 +158,16 @@ void loop() {
                   desiredPump ? "ON" : "OFF");
   }
 
+  // --- MODO PRUEBA: alterna CARGAR/CORTAR cada 5 s, ignorando el sensor ---
+#if MODO_PRUEBA
+  if (ahora - tPrueba >= PRUEBA_MS) {
+    tPrueba = ahora;
+    pruebaEstado = !pruebaEstado;
+    desiredPump = pruebaEstado;
+    Serial.printf("MODO PRUEBA -> %s\n", desiredPump ? "CARGAR (ON)" : "CORTAR (OFF)");
+  }
+#endif
+
   // --- b) Enviar la orden por radio ---
   if (ahora - tRadio >= INTERVALO_RADIO_MS) {
     tRadio = ahora;
@@ -208,6 +227,9 @@ float distanciaANivelPct(float dist) {
 // 7) LÓGICA DE DECISIÓN (histéresis)
 // ===========================================================================
 void decidirBomba() {
+#if MODO_PRUEBA
+  return;  // en MODO PRUEBA el estado lo maneja el toggle de 5 s (ignora el sensor)
+#endif
   if (modo == "MANUAL") {
     desiredPump = manualPump;            // la web manda directo
     return;
