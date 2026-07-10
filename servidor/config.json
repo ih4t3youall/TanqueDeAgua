@@ -1,6 +1,9 @@
 {
-  "modo": "AUTO",
+  "web_user": "admin",
+  "web_password_hash": "scrypt:32768:8:1$SXswgmSXdidYfqeq$7a164c758e8d78a8a8623f927aacdc6e44c2d1abb8f4fdf66961e33ec30c5f5ce9f389f37aa5d51299bed582c66d71b8511114d3f9e8f4ad2901eebe3ed2123f",
+  "device_token": "kame-tank-7f3a9c2e51d84b06",
+  "modo": "MANUAL",
   "manual_pump": false,
-  "nivel_alto_corte": 95.0,
-  "nivel_bajo_arranque": 60.0
+  "nivel_alto_corte": 80.0,
+  "nivel_bajo_arranque": 20.0
 }

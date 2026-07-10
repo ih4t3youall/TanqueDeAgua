@@ -38,7 +38,11 @@ const char* WIFI_SSID = "KameHouse";
 const char* WIFI_PASS = "bambinull";
 
 // --- Servidor (cambiar por la IP y puerto de tu servidor Flask) ---
-const char* SERVER_URL = "http://192.168.0.100:5000/api/status";
+const char* SERVER_URL = "http://187.127.22.210:5000/api/status";
+
+// --- Token de autenticación con el servidor (debe coincidir con
+//     "device_token" en servidor/config.json) ---
+const char* API_TOKEN = "kame-tank-7f3a9c2e51d84b06";
 
 // --- Geometría del tanque (calibración) ---
 // El sensor mide la DISTANCIA desde la tapa hasta la superficie del agua.
@@ -49,8 +53,8 @@ float DIST_TANQUE_VACIO_CM = 150.0;  // distancia medida con el tanque vacío
 
 // --- Umbrales por defecto (se pueden cambiar después desde la web) ---
 // Histéresis: corta cuando llega arriba, vuelve a arrancar cuando baja.
-float nivelAltoCorte    = 70.0;  // % de llenado -> CORTAR la bomba
-float nivelBajoArranque = 60.0;  // % de llenado -> ARRANCAR la bomba
+float nivelAltoCorte    = 80.0;  // % de llenado -> CORTAR la bomba (deja de cargar)
+float nivelBajoArranque = 30.0;  // % de llenado -> ARRANCAR la bomba (empieza a cargar)
 
 // --- MODO PRUEBA ---
 // En 1: IGNORA el sensor y alterna CARGAR (ON) / CORTAR (OFF) cada 5 s,
@@ -94,7 +98,7 @@ bool          pruebaEstado = false;
 
 const unsigned long INTERVALO_SENSOR_MS = 1000;  // medir cada 1 s
 const unsigned long INTERVALO_RADIO_MS  = 1000;  // mandar orden cada 1 s
-const unsigned long INTERVALO_SERVER_MS = 3000;  // hablar con el server cada 3 s
+const unsigned long INTERVALO_SERVER_MS = 10000; // hablar con el server cada 10 s
 
 // --- Protocolo de radio (debe coincidir EXACTO con el nodo bomba) ---
 #define CMD_MAGIC      0x7E   // firma: valida que el paquete es nuestro
@@ -268,6 +272,7 @@ void comunicarServidor() {
   HTTPClient http;
   http.begin(SERVER_URL);
   http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-API-Token", API_TOKEN);
   http.setTimeout(4000);
 
   // Armar el JSON con el estado actual
