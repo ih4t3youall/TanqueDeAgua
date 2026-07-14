@@ -13,7 +13,32 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 VENV="venv"
-PYTHON="${PYTHON:-python3}"
+
+# 0) Verificar que Python esté instalado (según el sistema operativo)
+#    - macOS: el comando es "python3"
+#    - Linux: el comando es "python"
+#    Si el esperado no está, se prueba el otro antes de rendirse.
+#    Se puede forzar uno puntual con:  PYTHON=python3.12 ./run.sh
+if [ -z "${PYTHON:-}" ]; then
+    case "$(uname -s)" in
+        Darwin) PREFERIDO="python3"; ALTERNATIVO="python" ;;
+        Linux)  PREFERIDO="python";  ALTERNATIVO="python3" ;;
+        *)      PREFERIDO="python3"; ALTERNATIVO="python" ;;
+    esac
+    if command -v "$PREFERIDO" >/dev/null 2>&1; then
+        PYTHON="$PREFERIDO"
+    elif command -v "$ALTERNATIVO" >/dev/null 2>&1; then
+        PYTHON="$ALTERNATIVO"
+    else
+        echo "ERROR: no se encontró Python instalado (probé '$PREFERIDO' y '$ALTERNATIVO')." >&2
+        case "$(uname -s)" in
+            Darwin) echo "Instalalo con:  brew install python3" >&2 ;;
+            Linux)  echo "Instalalo con:  sudo apt install python3 python3-venv  (Debian/Ubuntu)" >&2 ;;
+        esac
+        exit 1
+    fi
+fi
+echo ">> Usando $PYTHON ($($PYTHON --version 2>&1))"
 
 # 1) Crear el ambiente virtual si no existe
 if [ ! -x "$VENV/bin/python" ]; then
