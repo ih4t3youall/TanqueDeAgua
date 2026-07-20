@@ -273,7 +273,8 @@ void comunicarServidor() {
   http.begin(SERVER_URL);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-API-Token", API_TOKEN);
-  http.setTimeout(4000);
+  http.setConnectTimeout(6000);  // tiempo máximo para abrir la conexión TCP
+  http.setTimeout(6000);         // tiempo máximo esperando la respuesta
 
   // Armar el JSON con el estado actual
   StaticJsonDocument<256> body;
@@ -291,7 +292,15 @@ void comunicarServidor() {
     String resp = http.getString();
     aplicarConfigDelServidor(resp);
   } else {
-    Serial.printf("Server no responde (HTTP %d). Sigo en modo local.\n", code);
+    // code negativo = error de conexión (no se llegó al servidor);
+    // errorToString explica cuál (refused, timeout, lost, etc.)
+    Serial.printf("Server no responde (HTTP %d: %s). Sigo en modo local.\n",
+                  code, http.errorToString(code).c_str());
+    Serial.printf("  Diagnostico -> WiFi: %s | IP: %s | Gateway: %s | RSSI: %d dBm\n",
+                  WiFi.status() == WL_CONNECTED ? "conectado" : "DESCONECTADO",
+                  WiFi.localIP().toString().c_str(),
+                  WiFi.gatewayIP().toString().c_str(),
+                  WiFi.RSSI());
   }
   http.end();
 }

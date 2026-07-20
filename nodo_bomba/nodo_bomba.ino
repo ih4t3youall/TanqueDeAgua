@@ -4,15 +4,16 @@
   ----------------------------------------------------------------------------
   Qué hace este nodo:
     - Escucha por radio (NRF24L01 +PA+LNA) la orden que manda el NODO TANQUE.
-    - Acciona UN relé que está en serie con la línea "ON" de la bomba.
+    - Acciona UN relé que maneja la BOBINA del contactor Schneider (COM + NO).
 
-  Lógica de la bomba (según armado actual):
-    - La bomba queda SIEMPRE en ON. Esa línea pasa por el relé en COM + NC.
-    - Relé en reposo  -> NC cerrado -> bomba ANDANDO.
-    - Relé activado   -> abre       -> bomba CORTADA.
-    - BOMBA_ON  (maestro: "encender")     -> relé reposo   -> bomba ANDANDO.
-    - BOMBA_OFF (maestro: "apagar/lleno") -> relé activado -> bomba CORTADA.
-    - El botón ROJO del contactor sigue funcionando para apagar a mano.
+  Lógica de la bomba (armado con CONTACTOR, COM + NO -> ACTUALIZADO 2026-07-20):
+    - El relé cierra/abre el circuito de la bobina A1-A2 del contactor.
+    - Relé en reposo  -> COM-NO abierto -> bobina SIN energía -> bomba APAGADA.
+    - Relé activado   -> COM-NO cerrado -> bobina energizada  -> bomba ENCENDIDA.
+    - BOMBA_ON  (maestro: "encender")     -> relé activado -> bomba ENCENDIDA.
+    - BOMBA_OFF (maestro: "apagar/lleno") -> relé reposo   -> bomba APAGADA.
+    - Fail-safe natural: sin Arduino / reset / cuelgue -> relé en reposo -> bomba APAGADA.
+    - El botón ROJO del Olczak sigue funcionando para cortar a mano.
 
   PROTOCOLO: el paquete trae una firma (magic) + un código explícito
   BOMBA_ON / BOMBA_OFF. Si no coincide, se IGNORA (no toca la bomba). Así
@@ -46,10 +47,12 @@ const byte pipeAddress[6] = "TANK1";
 #define PIN_RELAY  3
 #define PIN_LED    4    // LED de estado opcional (220R a GND). Encendido = bomba ON.
 
-// La mayoría de los módulos de relé son ACTIVOS EN BAJO.
-// Si tu relé actúa al revés (clickea cuando debería estar en reposo), intercambiá estos dos.
-#define RELAY_ON   LOW   // nivel que ACTIVA el relé (corta la bomba)
-#define RELAY_OFF  HIGH  // nivel que LO DEJA EN REPOSO (bomba andando)
+// Nivel eléctrico para ACTIVAR el relé (depende del módulo; la mayoría son ACTIVOS EN BAJO).
+// Con el contactor en COM + NO: relé ACTIVADO = bobina energizada = bomba ENCENDIDA.
+// Si DESPUÉS de este cambio la bomba sigue invertida, tu módulo es ACTIVO EN ALTO:
+// intercambiá LOW <-> HIGH en estas dos líneas y volvé a cargar.
+#define RELAY_ON   LOW   // nivel que ACTIVA el relé (cierra COM-NO -> enciende la bomba)
+#define RELAY_OFF  HIGH  // nivel que lo deja en REPOSO (COM-NO abierto -> bomba apagada)
 
 // --- Protocolo de radio (debe coincidir EXACTO con el nodo tanque) ---
 #define CMD_MAGIC      0x7E   // firma: valida que el paquete es nuestro
@@ -70,13 +73,14 @@ struct __attribute__((packed)) RadioMsg {
 };
 RadioMsg msg;
 
-bool pumpOn = true;            // estado actual de la bomba (arranca en ON)
+bool pumpOn = false;           // estado actual de la bomba (arranca APAGADA = fail-safe)
 unsigned long lastMsg = 0;     // momento del último mensaje recibido
 bool huboSenal = false;        // ¿recibimos al menos un mensaje válido?
 
-// Aplica el estado de la bomba al relé y al LED
+// Aplica el estado de la bomba al relé y al LED.
+// Contactor en COM + NO: bomba ON = relé ACTIVADO (cierra COM-NO -> energiza la bobina A1-A2).
 void aplicarBomba(bool on) {
-  digitalWrite(PIN_RELAY, on ? RELAY_OFF : RELAY_ON); // ON = relé en reposo
+  digitalWrite(PIN_RELAY, on ? RELAY_ON : RELAY_OFF); // ON = relé activado (bobina energizada)
   digitalWrite(PIN_LED, on ? HIGH : LOW);
   pumpOn = on;
 }
@@ -88,10 +92,10 @@ void setup() {
   Serial.begin(115200);
 
   pinMode(PIN_LED, OUTPUT);
-  // Dejamos el relé en reposo (bomba ON) ANTES de configurar la salida
+  // Dejamos el relé en reposo (bomba APAGADA) ANTES de configurar la salida
   digitalWrite(PIN_RELAY, RELAY_OFF);
   pinMode(PIN_RELAY, OUTPUT);
-  aplicarBomba(true);           // arranca con la bomba en ON (estado por defecto)
+  aplicarBomba(false);          // arranca con la bomba APAGADA (fail-safe hasta recibir una orden válida)
 
   if (!radio.begin()) {
     Serial.println("ERROR: no se detecta el NRF24. Revisar cableado / 3.3V del AMS1117.");
@@ -104,7 +108,7 @@ void setup() {
   radio.startListening();
 
   lastMsg = millis();
-  Serial.println("Nodo BOMBA iniciado (esclavo). Bomba en ON por defecto.");
+  Serial.println("Nodo BOMBA iniciado (esclavo). Bomba APAGADA por defecto (fail-safe).");
 }
 
 // ===========================================================================
