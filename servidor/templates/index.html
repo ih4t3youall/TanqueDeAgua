@@ -34,6 +34,14 @@
   .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
   .dot.on  { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
   .dot.off { background: var(--bad); }
+  .dot.warn { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+  /* ---- enlace con la bomba ---- */
+  .link-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .cmd { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(127,127,127,.08); font-size: 14px; }
+  .cmd.ok   { color: var(--ok); }
+  .cmd.wait { color: var(--warn); }
+  .cmd.bad  { color: var(--bad); }
+  .cmd small { display: block; color: var(--muted); margin-top: 4px; font-size: 12px; }
 
   /* ---- tanque ---- */
   .tank-area { display: flex; gap: 24px; align-items: center; justify-content: center; }
@@ -144,6 +152,15 @@
   </div>
 
   <div class="card">
+    <h2>Enlace con la bomba</h2>
+    <div class="link-row">
+      <span><span id="dot-bomba" class="dot off"></span><span id="bomba-txt">Sin datos</span></span>
+      <span id="bomba-stats" class="sub"></span>
+    </div>
+    <div id="cmd" class="cmd">--</div>
+  </div>
+
+  <div class="card">
     <h2>Modo de funcionamiento</h2>
     <div class="mode">
       <button id="btn-auto" onclick="setModo('AUTO')">Automático</button>
@@ -218,6 +235,8 @@ function render(s) {
   document.getElementById("rssi").textContent = s.online ? ("WiFi " + s.rssi + " dBm") : "";
   document.getElementById("last-seen").textContent = "último reporte: " +
     (s.segundos_desde_reporte == null ? "nunca" : "hace " + s.segundos_desde_reporte + " s");
+  // enlace de radio con la bomba
+  renderEnlace(s);
   // modo
   document.getElementById("btn-auto").className   = cfg.modo === "AUTO"   ? "active" : "";
   document.getElementById("btn-manual").className = cfg.modo === "MANUAL" ? "active" : "";
@@ -232,6 +251,52 @@ function render(s) {
   if (document.activeElement !== inpBajo && document.activeElement !== inpAlto) {
     inpBajo.value = cfg.nivel_bajo_arranque;
     inpAlto.value = cfg.nivel_alto_corte;
+  }
+}
+
+// Estado del enlace de radio y del último comando (envío -> acuse de la bomba)
+function renderEnlace(s) {
+  const dot = document.getElementById("dot-bomba");
+  const txt = document.getElementById("bomba-txt");
+  const stats = document.getElementById("bomba-stats");
+  const cmd = document.getElementById("cmd");
+
+  if (!s.online) {
+    dot.className = "dot off"; txt.textContent = "Sin datos (el nodo tanque no reporta)";
+    stats.textContent = ""; cmd.className = "cmd"; cmd.textContent = "--"; return;
+  }
+  if (!s.radio_ok) {
+    dot.className = "dot off"; txt.textContent = "Radio del nodo tanque no detectada";
+    stats.textContent = ""; cmd.className = "cmd bad";
+    cmd.textContent = "No se puede mandar nada a la bomba: revisar el NRF24 del tanque."; return;
+  }
+  // enlace
+  if (s.radio_ack_ok) {
+    dot.className = "dot on"; txt.textContent = "Bomba en línea (acuse de recibo #" + s.radio_ack_seq + ")";
+  } else if (s.radio_ack_hace_s >= 0 && s.radio_ack_hace_s < 30) {
+    dot.className = "dot warn"; txt.textContent = "Bomba sin acuse hace " + s.radio_ack_hace_s + " s";
+  } else {
+    dot.className = "dot off"; txt.textContent = "Bomba sin enlace" +
+      (s.radio_ack_hace_s >= 0 ? " (último acuse hace " + s.radio_ack_hace_s + " s)" : " (nunca respondió)");
+  }
+  stats.textContent = "últimos 10 envíos: " + s.radio_ult10 + " entregados";
+
+  // comando: qué ordenó la web, si el nodo lo tomó y si la bomba lo acusó
+  const orden = cfg.modo === "MANUAL" ? (cfg.manual_pump ? "ENCENDER" : "APAGAR") : "APAGAR (modo AUTO)";
+  const deseadoWeb = cfg.modo === "MANUAL" ? cfg.manual_pump : false;
+  const haceCmd = s.cmd_ts ? Math.round(Date.now() / 1000 - s.cmd_ts) : null;
+  if (deseadoWeb !== s.pump_on) {
+    cmd.className = "cmd wait";
+    cmd.innerHTML = "⏳ Comando <b>" + orden + "</b> enviado al servidor. Esperando que el nodo tanque lo tome…" +
+      "<small>El nodo consulta cada 10 s" + (haceCmd != null ? " · enviado hace " + haceCmd + " s" : "") + "</small>";
+  } else if (s.radio_ack_ok) {
+    cmd.className = "cmd ok";
+    cmd.innerHTML = "✅ Orden <b>" + orden + "</b> entregada a la bomba — comando #" + s.radio_ack_seq + " con acuse de recibo." +
+      "<small>El tanque la repite cada 1 s (numeración 1–100 cíclica)</small>";
+  } else {
+    cmd.className = "cmd wait";
+    cmd.innerHTML = "📡 Orden <b>" + orden + "</b> en tránsito — comando #" + s.radio_seq + " sin acuse de la bomba." +
+      "<small>El tanque reintenta cada 1 s. Si no llega, la bomba está apagada o fuera de alcance.</small>";
   }
 }
 

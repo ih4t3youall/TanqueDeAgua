@@ -16,28 +16,27 @@ juntar todo.
 
 ## 2. Conexiones del NODO TANQUE (ESP32)
 
-### Sensor JSN-SR04T
-| Sensor | ESP32 |
-|---|---|
-| VCC | 5V (VIN) |
-| GND | GND |
-| TRIG | GPIO 26 |
-| ECHO | GPIO 25 **a través del divisor** |
+> El nodo tanque **ya no lleva sensor de nivel**. Solo tiene el ESP32, la radio
+> y el regulador. Diagrama con gráficos: `diagramas/conexiones_nodo_tanque.html`.
+> Detalle en `nodo_tanque/CABLEADO_nodo_tanque.md`.
 
-> ⚠️ El pin ECHO sale a 5V y el ESP32 trabaja a 3.3V. Poné un **divisor de tensión**:
-> del ECHO una resistencia de **1 kΩ** al GPIO 25, y de ese mismo punto una de
-> **2 kΩ** a GND. Así el ESP32 recibe ~3.3V y no se daña.
-
-### Radio NRF24L01 (usá la base con regulador 3.3V)
+### Radio NRF24L01 (alimentada por el AMS1117 5V→3.3V)
 | NRF24 | ESP32 |
 |---|---|
-| VCC | 3.3V (o 5V si usás la base con regulador) |
-| GND | GND |
+| VCC | **OUT del AMS1117** (3.3V). Nunca al pin 3V3 del ESP32 |
+| GND | GND común |
 | CE | GPIO 4 |
 | CSN | GPIO 5 |
 | SCK | GPIO 18 |
-| MOSI | GPIO 23 |
+| MOSI | GPIO 22 |
 | MISO | GPIO 19 |
+
+### AMS1117
+| AMS1117 | Va a |
+|---|---|
+| IN | VIN (5V) del ESP32 |
+| GND | GND común |
+| OUT | VCC del NRF24 |
 
 ## 3. Conexiones del NODO BOMBA (Arduino Nano)
 
@@ -88,12 +87,12 @@ Tus botones físicos siguen funcionando: podés operar la bomba a mano siempre.
    - `SERVER_URL` con la IP y puerto de tu servidor (ej. `http://192.168.0.100:5000/api/status`).
    - Elegí placa "ESP32 Dev Module" y cargá.
 
-## 5. Calibrar el sensor (importante)
+## 5. Qué hace el nodo tanque sin sensor
 
-1. Con el **tanque vacío**, mirá el Monitor Serie (115200 baudios) del ESP32 y
-   anotá la "Dist" en cm. Cargá ese valor en `DIST_TANQUE_VACIO_CM`.
-2. Con el **tanque lleno**, anotá la "Dist" y cargála en `DIST_TANQUE_LLENO_CM`.
-3. Volvé a cargar el código. Ahora el porcentaje va a ser correcto.
+- **MANUAL**: la bomba obedece el botón de la web (encender / apagar).
+- **AUTO**: como no hay sensor para saber cuándo está lleno, la bomba queda
+  **apagada** por seguridad. Para usar la bomba, pasá a MANUAL.
+- Los umbrales de la web se guardan pero no se usan.
 
 ## 6. Levantar el servidor
 
@@ -116,13 +115,12 @@ entrá a `http://IP-DE-TU-SERVIDOR:5000`.
 
 En la web vas a ver:
 
-- **Nivel actual** del tanque (dibujo + porcentaje + distancia).
+- **Nivel actual** del tanque: hoy queda en 0 % porque el nodo ya no tiene sensor.
 - **Estado de la bomba** (encendida/apagada) y si el tanque está **en línea**.
 - **Modo:**
-  - **AUTO** — el sistema solo: corta al llegar arriba, arranca al bajar.
-  - **MANUAL** — vos encendés/apagás con los botones de la web.
-- **Umbrales** — el % en que corta y el % en que vuelve a arrancar (modo AUTO).
-  Cambialos y tocá "Guardar umbrales".
+  - **AUTO** — sin sensor, la bomba queda apagada.
+  - **MANUAL** — vos encendés/apagás con los botones de la web (modo de uso actual).
+- **Umbrales** — se guardan pero no se usan mientras no haya sensor.
 
 ## Solución de problemas
 
@@ -130,8 +128,7 @@ En la web vas a ver:
 |---|---|
 | El NRF24 no transmite / "no se detecta" | Alimentación inestable: usá la base con regulador 3.3V o poné un capacitor 10–100 µF entre VCC y GND. Revisá cableado SPI. |
 | La bomba no arranca con el relé | Verificá si los relés son activos en bajo (ajustá `RELAY_ON`/`RELAY_OFF`). Confirmá paralelo en verde / serie en rojo. |
-| El porcentaje está mal | Recalibrá `DIST_TANQUE_LLENO_CM` y `DIST_TANQUE_VACIO_CM`. |
-| Lecturas saltan mucho | Confirmá el sensor bien fijo en la tapa, apuntando recto al agua, sin obstáculos. |
+| La bomba no enciende desde la web | El nodo tiene que estar en MANUAL; en AUTO queda apagada (no hay sensor). Esperá hasta 10 s, que es cada cuánto consulta al servidor. |
 | La web dice "Sin conexión con el tanque" | El ESP32 perdió WiFi o no llega al servidor. Revisá `WIFI_SSID/PASS` y `SERVER_URL`, y que el servidor esté corriendo. |
 | La bomba se apaga sola seguido | El nodo bomba no recibe la radio (fail-safe). Mejorá la antena/posición o bajá la distancia. |
 | Alcance de radio insuficiente | Usá módulos PA/LNA, antena en el techo fuera del housing, y `RF24_250KBPS` (ya configurado). Última opción: cambiar a LoRa. |

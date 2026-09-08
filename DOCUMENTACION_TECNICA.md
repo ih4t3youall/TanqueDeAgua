@@ -9,7 +9,7 @@ monitorear y controlar desde el celular o la PC.
    ┌─────────────────────────┐         radio NRF24         ┌────────────────────────┐
    │   NODO TANQUE (maestro)  │  ───────────────────────▶   │  NODO BOMBA (esclavo)  │
    │   ESP32                  │     "encender / apagar"     │  Arduino Nano          │
-   │   • mide el nivel        │                             │  • 2 relés             │
+   │   • recibe órdenes web   │                             │  • 2 relés             │
    │   • decide qué hacer     │                             │  • acciona la botonera │
    │   • WiFi al servidor     │                             │  • fail-safe           │
    └───────────┬─────────────┘                             └────────────────────────┘
@@ -27,38 +27,30 @@ controlando la bomba solo.
 
 ## Nodo TANQUE (ESP32) — el cerebro
 
+> Desde 2026-09 el nodo tanque **no mide el nivel**: se quitó el sensor
+> ultrasónico JSN-SR04T. Las órdenes vienen de la web.
+
 Cada segundo:
 
-1. **Mide el nivel** con el sensor ultrasónico waterproof JSN-SR04T montado en la
-   tapa. El sensor da la *distancia* hasta la superficie del agua; el código la
-   convierte a *porcentaje de llenado* usando dos valores que calibrás una vez
-   (distancia con tanque lleno y con tanque vacío).
+1. **Decide** si la bomba debe estar encendida o apagada:
+   - **MANUAL**: obedece el comando que pusiste en la web.
+   - **AUTO**: sin sensor no puede saber cuándo está lleno, así que deja la
+     bomba **apagada** por seguridad. Los umbrales que manda el servidor se
+     guardan pero no se usan.
 
-   Para que las **salpicaduras** del llenado no generen lecturas falsas, toma 7
-   lecturas seguidas y se queda con la **mediana** (el valor del medio), que
-   descarta los picos raros.
+2. **Envía la orden por radio** al nodo bomba. La reenvía cada segundo, así que
+   el nodo bomba siempre tiene una orden fresca.
 
-2. **Decide** si la bomba debe estar encendida o apagada, con **histéresis**:
-   - Si el nivel llega al umbral ALTO (ej. 95 %) → ordena **cortar**.
-   - Si el nivel baja al umbral BAJO (ej. 60 %) → ordena **arrancar**.
-   - Entre los dos umbrales no hace nada (mantiene el estado).
-
-   La histéresis es clave: sin ella, justo en el punto de corte la bomba prendería
-   y apagaría muchas veces por segundo ("traqueteo") y se arruinaría.
-
-3. **Envía la orden por radio** al nodo bomba (un mensaje simple: 1 = encender,
-   0 = apagar). La reenvía cada segundo, así que el nodo bomba siempre tiene una
-   orden fresca.
-
-4. **Habla con el servidor** por WiFi (cada 3 s): le manda el estado (nivel,
-   distancia, bomba, señal WiFi) y recibe de vuelta la configuración que pusiste
-   en la web (modo AUTO/MANUAL, comando manual, umbrales).
+3. **Habla con el servidor** por WiFi (cada 10 s): le manda el estado (bomba,
+   modo, señal WiFi) y recibe de vuelta la configuración que pusiste en la web
+   (modo AUTO/MANUAL y comando manual).
 
 ### Modo AUTO vs MANUAL
 
-- **AUTO**: el ESP32 maneja la bomba solo con la histéresis. Es el modo normal.
-- **MANUAL**: vos mandás encender/apagar desde la web y el ESP32 obedece, ignorando
-  los umbrales. Útil para pruebas o para forzar el llenado.
+- **MANUAL**: vos mandás encender/apagar desde la web y el ESP32 obedece. Es el
+  modo de uso actual.
+- **AUTO**: reservado para cuando vuelva a haber un sensor de nivel; hoy deja la
+  bomba apagada.
 
 ## Nodo BOMBA (Arduino Nano) — el músculo
 
@@ -109,8 +101,29 @@ struct RadioMsg { uint8_t command;  uint32_t seq; };
 **HTTP (ESP32 → servidor)** — el ESP32 hace `POST /api/status` con:
 
 ```json
-{ "level_pct": 82, "distance_cm": 40, "pump_on": true, "modo": "AUTO", "rssi": -67 }
+{ "pump_on": true, "modo": "MANUAL", "rssi": -67,
+  "radio_ok": true, "radio_seq": 37, "radio_ack_ok": true,
+  "radio_ack_seq": 37, "radio_ack_hace_s": 0, "radio_ult10": 9 }
 ```
+
+(`level_pct` y `distance_cm` ya no se mandan; el servidor los deja en 0.)
+
+Los campos `radio_*` describen el enlace tanque → bomba y alimentan la tarjeta
+"Enlace con la bomba" de la web:
+
+- `radio_ok`: el NRF24 del tanque responde por SPI.
+- `radio_seq`: número del último comando enviado por radio. Va de **1 a 100 y
+  vuelve a 1**, para que no crezca sin fin.
+- `radio_ack_ok`: si ese último envío tuvo **acuse de recibo** de la radio de la
+  bomba (lo da el chip NRF24 automáticamente: significa que el paquete llegó).
+- `radio_ack_seq` y `radio_ack_hace_s`: último comando confirmado y hace cuánto.
+- `radio_ult10`: cuántos de los últimos 10 envíos se entregaron (calidad del enlace).
+
+Con eso la web muestra el ciclo completo de un comando: **enviado al servidor →
+esperando que el nodo tanque lo tome (hasta 10 s) → en tránsito por radio →
+entregado a la bomba con acuse #N**. Cuando el nodo tanque recibe una orden
+nueva, vuelve a reportar a los ~1,5 s en vez de esperar 10 s, así el estado se
+actualiza rápido.
 
 y el servidor responde con la configuración:
 
@@ -128,11 +141,11 @@ y el servidor responde con la configuración:
 - **Lógica en el tanque (no en el servidor):** mismo motivo. El servidor es para
   ver y mandar órdenes, no es crítico para el funcionamiento.
 - **NRF24 PA/LNA + antena en el techo:** para cubrir los ~20 m con pared de por medio.
-- **Sensor waterproof + filtro de mediana:** para aguantar la humedad y las
-  salpicaduras del llenado por arriba.
 
 ## Posibles mejoras a futuro
 
+- **Volver a poner un sensor de nivel** para que el modo AUTO funcione solo
+  (histéresis: corta arriba, arranca abajo).
 - **Realimentación real de la bomba:** hoy el nodo bomba *asume* el estado (lo que
   ordenó). Se podría leer un contacto auxiliar del contactor o un sensor de corriente
   para saber si la bomba realmente está girando.

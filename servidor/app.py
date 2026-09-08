@@ -60,6 +60,14 @@ state = {
     "pump_on": False,
     "rssi": 0,
     "last_seen": 0,      # timestamp del último reporte
+    # --- enlace de radio tanque -> bomba (lo reporta el nodo tanque) ---
+    "radio_ok": False,        # el NRF24 del tanque responde
+    "radio_seq": 0,           # último comando enviado por radio (1..100, cíclico)
+    "radio_ack_ok": False,    # el último envío tuvo acuse de recibo de la bomba
+    "radio_ack_seq": 0,       # último comando que la bomba confirmó
+    "radio_ack_hace_s": -1,   # segundos desde el último acuse (-1 = nunca)
+    "radio_ult10": 0,         # cuántos de los últimos 10 envíos se entregaron
+    "cmd_ts": 0,              # cuándo se mandó el último comando desde la web
 }
 
 # Configuración (se persiste en config.json)
@@ -293,6 +301,12 @@ def api_status():
     state["distance_cm"] = _numero(data.get("distance_cm"), 0, 1000, state["distance_cm"])
     state["pump_on"]     = bool(data.get("pump_on", state["pump_on"]))
     state["rssi"]        = _numero(data.get("rssi"), -120, 0, state["rssi"])
+    state["radio_ok"]     = bool(data.get("radio_ok", state["radio_ok"]))
+    state["radio_seq"]    = int(_numero(data.get("radio_seq"), 0, 100, state["radio_seq"]))
+    state["radio_ack_ok"] = bool(data.get("radio_ack_ok", state["radio_ack_ok"]))
+    state["radio_ack_seq"] = int(_numero(data.get("radio_ack_seq"), 0, 100, state["radio_ack_seq"]))
+    state["radio_ack_hace_s"] = int(_numero(data.get("radio_ack_hace_s"), -1, 10**7, state["radio_ack_hace_s"]))
+    state["radio_ult10"]  = int(_numero(data.get("radio_ult10"), 0, 10, state["radio_ult10"]))
     state["last_seen"]   = time.time()
 
     # Solo lo que el nodo necesita (no le mandamos las credenciales web)
@@ -340,6 +354,8 @@ def api_control():
             config["manual_pump"] = False
     if "manual_pump" in data:
         config["manual_pump"] = bool(data["manual_pump"])
+    if "modo" in data or "manual_pump" in data:
+        state["cmd_ts"] = time.time()   # para que la web muestre "esperando al nodo"
 
     # Umbrales: se validan juntos (el bajo tiene que quedar por debajo del alto)
     if "nivel_alto_corte" in data or "nivel_bajo_arranque" in data:

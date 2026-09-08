@@ -39,15 +39,20 @@ Conexión del AMS1117:
 - D4 → resistencia 220Ω → pata larga del LED → pata corta → GND
 - LED encendido = bomba ON. Apagado = bomba cortada.
 
-## 4) Relé → línea de la bomba (esto va DESPUÉS de probar en banco)
-- La bomba queda siempre en ON.
-- Esa línea "ON" pasa por el relé en **COM** y **NC** (normal cerrado):
-  - Relé en reposo → NC cerrado → bomba ON ✅
-  - Arduino activa el relé (tanque lleno) → abre → bomba se corta ✅
-- El botón rojo del contactor sigue funcionando para apagar a mano.
+## 4) Relé → contactor (esto va DESPUÉS de probar en banco)
 
-> Nota de seguridad: con NC, si el Arduino se queda sin luz la bomba sigue ON.
-> El código tiene un *failsafe* que corta la bomba si pierde la radio 60s.
+**Diseño actual (código 2026-07-20): COM + NO sobre la bobina A1–A2 del contactor.**
+
+- El relé abre/cierra el circuito de la **bobina A1–A2** del contactor (COM + **NO**):
+  - Relé en reposo → COM–NO abierto → bobina sin energía → **bomba APAGADA** ✅ (fail-safe)
+  - Arduino activa el relé → COM–NO cerrado → bobina energizada → **bomba ENCENDIDA** ✅
+- Cableado del circuito de mando: fase → botón ROJO (paro) → **COM** del relé →
+  **NO** del relé → **A1** de la bobina; **A2** → neutro (como estaba).
+- El botón rojo del Olczak sigue funcionando para cortar a mano.
+
+> Nota de seguridad: con COM+NO, si el Arduino se resetea o se queda sin luz, el relé
+> queda en reposo y la bomba APAGADA (nunca rebalsa). Además el código corta la bomba
+> si pasan ~2 minutos sin un comando de radio válido.
 
 ## Librería necesaria (Arduino IDE)
 `Sketch → Include Library → Manage Libraries` → buscar **RF24** (de TMRh20) → Install.

@@ -1,0 +1,48 @@
+<svg viewBox="0 0 620 560" xmlns="http://www.w3.org/2000/svg" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif">
+  <rect x="0" y="0" width="620" height="560" fill="#ffffff"/>
+  <text x="30" y="34" font-size="19" font-weight="700" fill="#2C2C2A">nRF24L01 — pinout físico</text>
+  <text x="30" y="55" font-size="12.5" fill="#5F5E5A">Vista desde ARRIBA (lado de los componentes), con la antena hacia arriba.</text>
+  <line x1="30" y1="68" x2="590" y2="68" stroke="#E5E3DC" stroke-width="1.5"/>
+
+  <!-- Módulo -->
+  <rect x="210" y="120" width="200" height="300" rx="10" fill="#F4F6FA" stroke="#888780" stroke-width="2"/>
+  <!-- Antena -->
+  <rect x="250" y="86" width="120" height="34" rx="5" fill="#Dfe3ea" stroke="#888780" stroke-width="1.5"/>
+  <text x="310" y="108" font-size="12" font-weight="700" fill="#5F5E5A" text-anchor="middle">antena ↑</text>
+  <text x="310" y="150" font-size="12" font-weight="700" fill="#7C6FF0" text-anchor="middle">nRF24L01 +PA+LNA</text>
+  <text x="310" y="168" font-size="10" fill="#888780" text-anchor="middle">(chip visto de frente)</text>
+
+  <!-- Pines: 2 columnas x 4 filas -->
+  <!-- filas y: 220, 270, 320, 370 -->
+  <!-- Izquierda x=252 ; Derecha x=368 -->
+  <g font-size="12.5" font-weight="700">
+    <!-- fila 1: MISO | IRQ -->
+    <circle cx="252" cy="220" r="9" fill="#159E6E"/><text x="272" y="224" fill="#2C2C2A" text-anchor="start">MISO</text>
+    <circle cx="368" cy="220" r="9" fill="#B4B2A9"/><text x="348" y="224" fill="#888780" text-anchor="end">IRQ</text>
+    <!-- fila 2: SCK | MOSI -->
+    <circle cx="252" cy="270" r="9" fill="#7C6FF0"/><text x="272" y="274" fill="#2C2C2A" text-anchor="start">SCK</text>
+    <circle cx="368" cy="270" r="9" fill="#D4537E"/><text x="348" y="274" fill="#2C2C2A" text-anchor="end">MOSI</text>
+    <!-- fila 3: CE | CSN -->
+    <circle cx="252" cy="320" r="9" fill="#8FBF3F"/><text x="272" y="324" fill="#2C2C2A" text-anchor="start">CE</text>
+    <circle cx="368" cy="320" r="9" fill="#2F86DD"/><text x="348" y="324" fill="#2C2C2A" text-anchor="end">CSN</text>
+    <!-- fila 4 (borde): GND | VCC -->
+    <circle cx="252" cy="370" r="9" fill="#2C2C2A"/><text x="272" y="374" fill="#2C2C2A" text-anchor="start">GND</text>
+    <circle cx="368" cy="370" r="9" fill="#EF9F27"/><text x="348" y="374" fill="#BA7517" text-anchor="end">VCC</text>
+  </g>
+  <text x="310" y="404" font-size="10.5" fill="#5F5E5A" text-anchor="middle">↑ GND y VCC son el par del BORDE (lo más lejos de la antena)</text>
+
+  <!-- Tabla de conexiones -->
+  <rect x="30" y="440" width="560" height="104" rx="10" fill="#FBFBF9" stroke="#D9D7CE" stroke-width="1.6"/>
+  <text x="46" y="462" font-size="12.5" font-weight="700" fill="#2C2C2A">A dónde va cada pin (Arduino Nano)</text>
+  <g font-size="11.5" fill="#2C2C2A">
+    <text x="46"  y="484">CE → D9</text>
+    <text x="170" y="484">CSN → D10</text>
+    <text x="300" y="484">SCK → D13</text>
+    <text x="430" y="484">MOSI → D11</text>
+    <text x="46"  y="506">MISO → D12</text>
+    <text x="170" y="506" fill="#888780">IRQ → libre</text>
+    <text x="300" y="506" fill="#BA7517" font-weight="700">VCC → 3.3V (AMS1117 OUT)</text>
+    <text x="46"  y="528" font-weight="700">GND → GND común (Nano + AMS1117)</text>
+    <text x="300" y="528" fill="#B5710F">Nunca al pin 3.3V del Nano.</text>
+  </g>
+</svg>

@@ -1,0 +1,323 @@
+<title>Cableado Nodo Tanque</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #F6F7F3;
+    --panel: #FFFFFF;
+    --panel-2: #EEF1EA;
+    --ink: #1D231F;
+    --muted: #5D6760;
+    --line: #D6DBD1;
+    --line-strong: #A9B2A8;
+    --v5: #D63B2F;
+    --v33: #DD8A1C;
+    --ce: #5FA52F;
+    --csn: #2B7BD3;
+    --sck: #8A6FF0;
+    --mosi: #D2508A;
+    --miso: #17A583;
+    --warn-bg: #FBF1DC;
+    --warn-ink: #7A4E07;
+    --ok-bg: #E4F3E3;
+    --ok-ink: #22592A;
+    --board-esp: #2F3A44;
+    --board-nrf: #3B2F6B;
+    --board-ams: #6B4A12;
+    --chip: #DDE3E8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151916; --panel: #1E2420; --panel-2: #262D28; --ink: #E7ECE5; --muted: #9AA69C;
+      --line: #313A34; --line-strong: #4C5750; --v5: #F0584C; --v33: #F0A238; --ce: #82C752;
+      --csn: #5A9FE8; --sck: #A896F7; --mosi: #E8709F; --miso: #3AC49E;
+      --warn-bg: #3A2D12; --warn-ink: #F2C77A; --ok-bg: #1D3320; --ok-ink: #9FD9A3;
+      --board-esp: #46525C; --board-nrf: #5B4E96; --board-ams: #8E6A2A; --chip: #3A434B;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151916; --panel: #1E2420; --panel-2: #262D28; --ink: #E7ECE5; --muted: #9AA69C;
+    --line: #313A34; --line-strong: #4C5750; --v5: #F0584C; --v33: #F0A238; --ce: #82C752;
+    --csn: #5A9FE8; --sck: #A896F7; --mosi: #E8709F; --miso: #3AC49E;
+    --warn-bg: #3A2D12; --warn-ink: #F2C77A; --ok-bg: #1D3320; --ok-ink: #9FD9A3;
+    --board-esp: #46525C; --board-nrf: #5B4E96; --board-ams: #8E6A2A; --chip: #3A434B;
+  }
+
+  body { background: var(--bg); color: var(--ink); font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; font-size: 15px; line-height: 1.5; }
+  .page { max-width: 1000px; margin: 0 auto; padding: 32px 20px 64px; display: flex; flex-direction: column; gap: 32px; }
+  h1, h2 { font-family: "Chivo", "IBM Plex Sans", Arial, sans-serif; text-wrap: balance; margin: 0; }
+  h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; }
+  h2 { font-size: 18px; font-weight: 700; }
+  p { margin: 0; max-width: 68ch; }
+  .eyebrow { font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  header { display: flex; flex-direction: column; gap: 8px; border-bottom: 2px solid var(--ink); padding-bottom: 16px; }
+  header .sub { color: var(--muted); }
+  .mono { font-family: "IBM Plex Mono", monospace; }
+  .badge { display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 12px; padding: 2px 8px; border-radius: 4px; background: var(--panel-2); color: var(--ink); }
+  .badge.removed { background: var(--warn-bg); color: var(--warn-ink); text-decoration: line-through; }
+
+  section { display: flex; flex-direction: column; gap: 12px; }
+  figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-x: auto; }
+  figure svg { display: block; max-width: 100%; height: auto; min-width: 640px; margin: 0 auto; }
+  figcaption { font-size: 13px; color: var(--muted); padding: 8px 4px 0; }
+
+  /* SVG drawing classes, themed via tokens */
+  svg text { font-family: "IBM Plex Mono", monospace; fill: var(--ink); }
+  svg .lbl { font-size: 12px; }
+  svg .lbl-s { font-size: 11px; fill: var(--muted); }
+  svg .title { font-family: "Chivo", sans-serif; font-size: 13px; font-weight: 700; fill: #FFFFFF; }
+  svg .board { fill: var(--panel); stroke: var(--line-strong); stroke-width: 1.5; }
+  svg .hdr-esp { fill: var(--board-esp); }
+  svg .hdr-nrf { fill: var(--board-nrf); }
+  svg .hdr-ams { fill: var(--board-ams); }
+  svg .pinpad { fill: var(--chip); stroke: var(--line-strong); stroke-width: 1; }
+  svg .w { fill: none; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+  svg .w-pow { stroke-width: 3.2; }
+  svg .w-ce { stroke: var(--ce); } svg .w-csn { stroke: var(--csn); } svg .w-sck { stroke: var(--sck); }
+  svg .w-mosi { stroke: var(--mosi); } svg .w-miso { stroke: var(--miso); }
+  svg .w-5v { stroke: var(--v5); } svg .w-33 { stroke: var(--v33); } svg .w-gnd { stroke: var(--ink); }
+  svg .dot-gnd { fill: var(--ink); } svg .dot-5v { fill: var(--v5); } svg .dot-33 { fill: var(--v33); }
+  svg .t-5v { fill: var(--v5); font-weight: 500; } svg .t-33 { fill: var(--v33); font-weight: 500; }
+  svg .t-ce { fill: var(--ce); } svg .t-csn { fill: var(--csn); } svg .t-sck { fill: var(--sck); } svg .t-mosi { fill: var(--mosi); } svg .t-miso { fill: var(--miso); }
+  svg .cap { stroke: var(--ink); stroke-width: 2.4; fill: none; }
+  svg .usb { fill: var(--panel-2); stroke: var(--line-strong); }
+  svg .pin-c { stroke: var(--panel); stroke-width: 2; }
+  svg .ant { fill: var(--panel-2); stroke: var(--line-strong); stroke-width: 1.5; }
+
+  table { border-collapse: collapse; width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 500; background: var(--panel-2); }
+  tr:last-child td { border-bottom: none; }
+  td.pin { font-family: "IBM Plex Mono", monospace; font-weight: 500; white-space: nowrap; }
+  .sw { display: inline-block; width: 26px; height: 5px; border-radius: 3px; vertical-align: middle; margin-right: 8px; }
+  .tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+  .tables > div { display: flex; flex-direction: column; gap: 8px; }
+  .tables h3 { font-family: "Chivo", sans-serif; font-size: 14px; font-weight: 700; margin: 0; }
+
+  .note { padding: 12px 14px; border-radius: 6px; border-left: 4px solid; max-width: none; }
+  .note.warn { background: var(--warn-bg); color: var(--warn-ink); border-color: var(--v33); }
+  .note.ok { background: var(--ok-bg); color: var(--ok-ink); border-color: var(--ce); }
+  .note p { max-width: none; }
+  .note strong { font-weight: 600; }
+
+  ol.check { margin: 0; padding-left: 0; list-style: none; counter-reset: paso; display: flex; flex-direction: column; gap: 8px; }
+  ol.check li { counter-increment: paso; display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: baseline; padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+  ol.check li::before { content: counter(paso); font-family: "IBM Plex Mono", monospace; font-weight: 500; color: var(--muted); }
+  ol.check li b { font-weight: 600; }
+  ol.check li span { display: block; color: var(--muted); font-size: 14px; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+  @media (prefers-reduced-motion: no-preference) { a:focus-visible { outline: 2px solid var(--csn); outline-offset: 2px; } }
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">Medidor tanque de agua · nodo tanque (maestro) · rev. 2026-09</div>
+    <h1>Cableado del nodo tanque</h1>
+    <p class="sub">ESP32 DevKit + nRF24L01 PA/LNA + regulador AMS1117. Este nodo ya no mide el nivel: solo habla con la web por WiFi y le manda la orden a la bomba por radio.
+      <span class="badge">ESP32</span> <span class="badge">nRF24L01</span> <span class="badge">AMS1117 5V→3.3V</span> <span class="badge removed">JSN-SR04T</span> <span class="badge removed">divisor ECHO</span></p>
+  </header>
+
+  <section>
+    <h2>Esquema de conexiones</h2>
+    <figure>
+      <svg viewBox="0 0 960 540" role="img" aria-label="ESP32 conectado al nRF24L01 por cinco cables SPI directos; el VIN de 5V del ESP32 alimenta al AMS1117, cuya salida de 3.3V alimenta al nRF24; GND común entre los tres módulos.">
+        <!-- ===== cables (debajo de las placas) ===== -->
+        <!-- SPI directos -->
+        <line class="w w-ce"   x1="262" y1="120" x2="698" y2="120"/>
+        <line class="w w-csn"  x1="262" y1="150" x2="698" y2="150"/>
+        <line class="w w-sck"  x1="262" y1="180" x2="698" y2="180"/>
+        <line class="w w-mosi" x1="262" y1="210" x2="698" y2="210"/>
+        <line class="w w-miso" x1="262" y1="240" x2="698" y2="240"/>
+        <!-- 5V: VIN -> AMS IN -->
+        <polyline class="w w-pow w-5v" points="262,300 340,300 340,410 418,410"/>
+        <!-- GND: ESP32 -> AMS GND -> nRF GND -->
+        <polyline class="w w-pow w-gnd" points="262,330 306,330 306,440 418,440"/>
+        <polyline class="w w-pow w-gnd" points="306,440 306,500 662,500 662,330 698,330"/>
+        <circle class="dot-gnd" cx="306" cy="440" r="4"/>
+        <!-- 3.3V: AMS OUT -> nRF VCC -->
+        <polyline class="w w-pow w-33" points="562,410 640,410 640,300 698,300"/>
+        <!-- capacitor entre VCC y GND del nRF, pegado al módulo -->
+        <line class="cap" x1="680" y1="300" x2="680" y2="306"/>
+        <line class="cap" x1="672" y1="306" x2="688" y2="306"/>
+        <line class="cap" x1="672" y1="313" x2="688" y2="313"/>
+        <line class="cap" x1="680" y1="313" x2="680" y2="330"/>
+        <circle class="dot-33" cx="680" cy="300" r="3.5"/>
+        <circle class="dot-gnd" cx="680" cy="330" r="3.5"/>
+        <text class="lbl-s" x="628" y="352" text-anchor="end">C 10–100 µF (+ al VCC) →</text>
+
+        <!-- etiquetas de los cables SPI -->
+        <text class="lbl t-ce"   x="480" y="114" text-anchor="middle">CE</text>
+        <text class="lbl t-csn"  x="480" y="144" text-anchor="middle">CSN</text>
+        <text class="lbl t-sck"  x="480" y="174" text-anchor="middle">SCK</text>
+        <text class="lbl t-mosi" x="480" y="204" text-anchor="middle">MOSI</text>
+        <text class="lbl t-miso" x="480" y="234" text-anchor="middle">MISO</text>
+        <text class="lbl t-5v"   x="380" y="296" text-anchor="middle">5V</text>
+        <text class="lbl t-33"   x="600" y="404" text-anchor="middle">3.3V</text>
+        <text class="lbl"        x="484" y="494" text-anchor="middle">GND común</text>
+
+        <!-- ===== ESP32 ===== -->
+        <rect class="board" x="40" y="60" width="222" height="420" rx="10"/>
+        <rect class="hdr-esp" x="40" y="60" width="222" height="32" rx="10"/>
+        <rect class="hdr-esp" x="40" y="80" width="222" height="12"/>
+        <text class="title" x="151" y="81" text-anchor="middle">ESP32 DevKit (maestro)</text>
+        <g class="lbl" text-anchor="end">
+          <text x="236" y="124">G4</text>
+          <text x="236" y="154">G5</text>
+          <text x="236" y="184">G18</text>
+          <text x="236" y="214">G22</text>
+          <text x="236" y="244">G19</text>
+          <text class="t-5v" x="236" y="304">VIN 5V</text>
+          <text x="236" y="334">GND</text>
+        </g>
+        <g class="lbl-s" text-anchor="end">
+          <text x="200" y="124">CE</text>
+          <text x="200" y="154">CSN</text>
+          <text x="196" y="184">SCK</text>
+          <text x="196" y="214">MOSI</text>
+          <text x="196" y="244">MISO</text>
+        </g>
+        <g class="pinpad">
+          <rect x="248" y="113" width="14" height="14" rx="2"/>
+          <rect x="248" y="143" width="14" height="14" rx="2"/>
+          <rect x="248" y="173" width="14" height="14" rx="2"/>
+          <rect x="248" y="203" width="14" height="14" rx="2"/>
+          <rect x="248" y="233" width="14" height="14" rx="2"/>
+          <rect x="248" y="293" width="14" height="14" rx="2"/>
+          <rect x="248" y="323" width="14" height="14" rx="2"/>
+        </g>
+        <rect class="usb" x="121" y="470" width="60" height="18" rx="3"/>
+        <text class="lbl-s" x="151" y="512" text-anchor="middle">micro-USB · fuente 5V ≥ 1 A</text>
+        <text class="lbl-s" x="151" y="400" text-anchor="middle">G25 / G26 quedan libres</text>
+        <text class="lbl-s" x="151" y="416" text-anchor="middle">(antes TRIG / ECHO del sensor)</text>
+
+        <!-- ===== nRF24L01 ===== -->
+        <rect class="ant" x="770" y="40" width="80" height="22" rx="4"/>
+        <text class="lbl-s" x="810" y="55" text-anchor="middle">antena</text>
+        <rect class="board" x="698" y="60" width="222" height="330" rx="10"/>
+        <rect class="hdr-nrf" x="698" y="60" width="222" height="32" rx="10"/>
+        <rect class="hdr-nrf" x="698" y="80" width="222" height="12"/>
+        <text class="title" x="809" y="81" text-anchor="middle">nRF24L01 +PA+LNA</text>
+        <g class="lbl" text-anchor="start">
+          <text x="724" y="124">CE</text>
+          <text x="724" y="154">CSN</text>
+          <text x="724" y="184">SCK</text>
+          <text x="724" y="214">MOSI</text>
+          <text x="724" y="244">MISO</text>
+          <text class="t-33" x="724" y="304">VCC 3.3V</text>
+          <text x="724" y="334">GND</text>
+        </g>
+        <text class="lbl-s" x="724" y="366" text-anchor="start">IRQ — sin conectar</text>
+        <g class="pinpad">
+          <rect x="698" y="113" width="14" height="14" rx="2"/>
+          <rect x="698" y="143" width="14" height="14" rx="2"/>
+          <rect x="698" y="173" width="14" height="14" rx="2"/>
+          <rect x="698" y="203" width="14" height="14" rx="2"/>
+          <rect x="698" y="233" width="14" height="14" rx="2"/>
+          <rect x="698" y="293" width="14" height="14" rx="2"/>
+          <rect x="698" y="323" width="14" height="14" rx="2"/>
+        </g>
+
+        <!-- ===== AMS1117 ===== -->
+        <rect class="board" x="418" y="380" width="144" height="80" rx="8"/>
+        <rect class="hdr-ams" x="418" y="380" width="144" height="26" rx="8"/>
+        <rect class="hdr-ams" x="418" y="396" width="144" height="10"/>
+        <text class="title" x="490" y="398" text-anchor="middle">AMS1117 5V→3.3V</text>
+        <text class="lbl t-5v" x="430" y="414" text-anchor="start">IN</text>
+        <text class="lbl" x="430" y="444" text-anchor="start">GND</text>
+        <text class="lbl t-33" x="550" y="414" text-anchor="end">OUT</text>
+        <text class="lbl-s" x="490" y="448" text-anchor="middle">hasta 800 mA</text>
+      </svg>
+      <figcaption>Cinco cables SPI van directos del ESP32 al nRF24. La radio se alimenta con los 3.3V del AMS1117, nunca con el pin 3V3 del ESP32. Los tres módulos comparten GND.</figcaption>
+    </figure>
+    <div class="note warn"><p><strong>El 3V3 del ESP32 no alcanza para la radio.</strong> El nRF24 con PA/LNA pide picos de más de 200 mA al transmitir; el regulador de la placa se cae y el módulo se resetea o el ESP32 dice "no se detecta el módulo NRF24". Por eso el VCC de la radio sale del AMS1117, que a su vez se alimenta del VIN (5V del USB).</p></div>
+  </section>
+
+  <section>
+    <h2>Tabla de conexiones</h2>
+    <div class="tables">
+      <div>
+        <h3>nRF24L01 → ESP32</h3>
+        <table>
+          <thead><tr><th>Pin nRF24</th><th>Va a</th><th>Nota</th></tr></thead>
+          <tbody>
+            <tr><td class="pin"><span class="sw" style="background:var(--ce)"></span>CE</td><td class="pin">GPIO 4</td><td>en el código: <span class="mono">PIN_CE</span></td></tr>
+            <tr><td class="pin"><span class="sw" style="background:var(--csn)"></span>CSN</td><td class="pin">GPIO 5</td><td>en el código: <span class="mono">PIN_CSN</span></td></tr>
+            <tr><td class="pin"><span class="sw" style="background:var(--sck)"></span>SCK</td><td class="pin">GPIO 18</td><td>SPI por hardware (VSPI)</td></tr>
+            <tr><td class="pin"><span class="sw" style="background:var(--mosi)"></span>MOSI</td><td class="pin">GPIO 22</td><td>SPI (MOSI remapeado al 22 en el código)</td></tr>
+            <tr><td class="pin"><span class="sw" style="background:var(--miso)"></span>MISO</td><td class="pin">GPIO 19</td><td>SPI por hardware (VSPI)</td></tr>
+            <tr><td class="pin"><span class="sw" style="background:var(--v33)"></span>VCC</td><td class="pin">AMS1117 OUT</td><td>3.3V. Nunca al 3V3 del ESP32.</td></tr>
+            <tr><td class="pin"><span class="sw" style="background:var(--ink)"></span>GND</td><td class="pin">GND común</td><td>mismo GND que el ESP32 y el AMS1117</td></tr>
+            <tr><td class="pin">IRQ</td><td class="pin">—</td><td>libre, el código no lo usa</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3>AMS1117 (regulador)</h3>
+        <table>
+          <thead><tr><th>Pin AMS1117</th><th>Va a</th><th>Nota</th></tr></thead>
+          <tbody>
+            <tr><td class="pin"><span class="sw" style="background:var(--v5)"></span>IN</td><td class="pin">ESP32 VIN (5V)</td><td>el VIN saca los 5V del USB</td></tr>
+            <tr><td class="pin"><span class="sw" style="background:var(--ink)"></span>GND</td><td class="pin">ESP32 GND</td><td>GND común</td></tr>
+            <tr><td class="pin"><span class="sw" style="background:var(--v33)"></span>OUT</td><td class="pin">nRF24 VCC</td><td>3.3V para la radio</td></tr>
+          </tbody>
+        </table>
+        <h3>Capacitor en la radio</h3>
+        <table>
+          <tbody>
+            <tr><td class="pin">10–100 µF</td><td>entre VCC y GND del nRF24, lo más pegado posible al módulo. Pata larga (+) al VCC.</td></tr>
+          </tbody>
+        </table>
+        <p class="sub" style="color:var(--muted);font-size:14px">Si tu AMS1117 es el módulo con capacitores incluidos, el capacitor extra es opcional. Si tenés uno a mano, ponelo igual: es la causa número uno de fallas del nRF24.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Pinout físico del nRF24L01</h2>
+    <div class="two">
+      <figure>
+        <svg viewBox="0 0 420 330" role="img" aria-label="Módulo nRF24L01 visto desde arriba con la antena hacia arriba. Los ocho pines van en dos columnas de cuatro: MISO e IRQ arriba, luego SCK y MOSI, luego CE y CSN, y en el borde GND y VCC.">
+          <rect class="ant" x="150" y="14" width="120" height="30" rx="5"/>
+          <text class="lbl-s" x="210" y="34" text-anchor="middle">antena ↑</text>
+          <rect class="board" x="100" y="44" width="220" height="250" rx="10"/>
+          <text class="lbl" x="210" y="70" text-anchor="middle">vista desde arriba</text>
+          <text class="lbl-s" x="210" y="86" text-anchor="middle">(lado de los componentes)</text>
+          <g class="pin-c">
+            <circle cx="150" cy="120" r="9" style="fill:var(--miso)"/><circle cx="270" cy="120" r="9" style="fill:var(--line-strong)"/>
+            <circle cx="150" cy="165" r="9" style="fill:var(--sck)"/><circle cx="270" cy="165" r="9" style="fill:var(--mosi)"/>
+            <circle cx="150" cy="210" r="9" style="fill:var(--ce)"/><circle cx="270" cy="210" r="9" style="fill:var(--csn)"/>
+            <circle cx="150" cy="255" r="9" style="fill:var(--ink)"/><circle cx="270" cy="255" r="9" style="fill:var(--v33)"/>
+          </g>
+          <g class="lbl">
+            <text x="168" y="124" text-anchor="start">MISO</text><text x="252" y="124" text-anchor="end">IRQ</text>
+            <text x="168" y="169" text-anchor="start">SCK</text><text x="252" y="169" text-anchor="end">MOSI</text>
+            <text x="168" y="214" text-anchor="start">CE</text><text x="252" y="214" text-anchor="end">CSN</text>
+            <text x="168" y="259" text-anchor="start">GND</text><text class="t-33" x="252" y="259" text-anchor="end">VCC</text>
+          </g>
+          <g class="lbl-s">
+            <text x="92" y="124" text-anchor="end">G19</text><text x="330" y="124" text-anchor="start">—</text>
+            <text x="92" y="169" text-anchor="end">G18</text><text x="330" y="169" text-anchor="start">G22</text>
+            <text x="92" y="214" text-anchor="end">G4</text><text x="330" y="214" text-anchor="start">G5</text>
+            <text x="92" y="259" text-anchor="end">GND</text><text x="330" y="259" text-anchor="start">3.3V</text>
+          </g>
+          <text class="lbl-s" x="210" y="316" text-anchor="middle">GND y VCC son el par del borde, lejos de la antena</text>
+        </svg>
+        <figcaption>A la izquierda de cada pin, el GPIO del ESP32 al que va. Si el módulo está dado vuelta, las columnas se invierten: ubicá primero el par GND/VCC del borde.</figcaption>
+      </figure>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="note ok"><p><strong>Qué cambió respecto a la versión anterior.</strong> Se sacó el sensor JSN-SR04T y su divisor de tensión (100 Ω / 180 Ω). Los GPIO 25 y 26 quedan libres. El código ya no mide nivel: en modo MANUAL la bomba obedece a la web, y en modo AUTO queda apagada por seguridad.</p></div>
+        <p style="color:var(--muted);font-size:14px">Parámetros de radio que deben coincidir con el nodo bomba: dirección <span class="mono">TANK1</span>, canal 108, 250 kbps, potencia LOW mientras pruebes en el banco.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Chequeo en el banco, en orden</h2>
+    <ol class="check">
+      <li><b>Sin la radio conectada, cargá el sketch y abrí el Monitor Serie a 115200.</b><span>Tiene que decir "WiFi OK. IP: …" y después "Nodo TANQUE iniciado (sin sensor de nivel)". Si no aparece nada, el problema es el ESP32 o el USB, no la radio.</span></li>
+      <li><b>Medí con el tester la salida del AMS1117.</b><span>Entre OUT y GND tenés que leer entre 3.2 y 3.4 V con el ESP32 encendido. Si leés 5 V, IN y OUT están cruzados.</span></li>
+      <li><b>Conectá la radio con el ESP32 apagado y volvé a encender.</b><span>Si el monitor dice "ERROR: no se detecta el modulo NRF24", revisá primero CSN (G5) y SCK (G18), después MOSI y MISO. Un solo cable flojo del SPI da exactamente ese mensaje.</span></li>
+      <li><b>Mirá el aviso de recepción cada segundo.</b><span>"el nodo bomba no confirmo la recepcion" quiere decir que el ESP32 transmite pero la bomba no contesta: acercá los nodos y verificá que el nodo bomba esté encendido y en el mismo canal.</span></li>
+      <li><b>Probá la bomba desde la web.</b><span>Poné modo MANUAL y encendé. El monitor tiene que cambiar a "Bomba: ON" dentro de los 10 segundos, que es cada cuánto el nodo consulta al servidor.</span></li>
+    </ol>
+  </section>
+</div>

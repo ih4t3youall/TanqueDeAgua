@@ -1,20 +1,24 @@
 /*
   ============================================================================
   NODO TANQUE (MAESTRO)  -  ESP32
-  Medidor de nivel de tanque de agua con control de bomba por radio
+  Control de bomba por radio, comandado desde la web
   ----------------------------------------------------------------------------
   Qué hace este nodo:
-    1. Mide el nivel del agua con un sensor ultrasónico waterproof JSN-SR04T.
-    2. Decide si la bomba debe estar ENCENDIDA o APAGADA (lógica con histéresis).
+    1. Se conecta al WiFi y reporta el estado a tu servidor (Flask).
+       En la misma llamada recibe la configuración (modo AUTO/MANUAL y
+       comando manual) que ponés desde la página web.
+    2. Decide si la bomba debe estar ENCENDIDA o APAGADA.
     3. Envía la orden por radio (NRF24L01) al NODO BOMBA cada segundo.
-    4. Se conecta al WiFi y reporta el estado a tu servidor (Flask).
-       En la misma llamada recibe la configuración (modo AUTO/MANUAL,
-       comando manual y umbrales) que ponés desde la página web.
 
-  Importante: la lógica de control vive ACÁ, no en el servidor. Si el servidor
-  o el WiFi se caen, el nodo sigue controlando la bomba en modo AUTO con la
-  última configuración conocida. La web es para monitorear y mandar órdenes,
-  no es indispensable para que el sistema funcione.
+  Este nodo YA NO MIDE el nivel del tanque (se quitó el sensor ultrasónico).
+  Por eso:
+    - En modo MANUAL la bomba obedece el botón de la web (encender / apagar).
+    - En modo AUTO, como no hay sensor para saber cuándo está lleno, la bomba
+      queda APAGADA por seguridad (nunca rebalsa).
+    - Los umbrales que llegan del servidor se guardan pero no se usan.
+
+  Si el servidor o el WiFi se caen, el nodo sigue mandando por radio la última
+  orden conocida. El nodo bomba además corta sola si deja de recibir radio.
 
   Librerías necesarias (Gestor de librerías del IDE de Arduino):
     - RF24        (by TMRh20)
@@ -44,22 +48,14 @@ const char* SERVER_URL = "http://187.127.22.210:5000/api/status";
 //     "device_token" en servidor/config.json) ---
 const char* API_TOKEN = "kame-tank-7f3a9c2e51d84b06";
 
-// --- Geometría del tanque (calibración) ---
-// El sensor mide la DISTANCIA desde la tapa hasta la superficie del agua.
-// Tanque lleno  -> distancia chica.  Tanque vacío -> distancia grande.
-// Medí estos dos valores una vez con un metro y cargalos acá (en cm):
-float DIST_TANQUE_LLENO_CM = 15.0;   // distancia medida con el tanque lleno
-float DIST_TANQUE_VACIO_CM = 150.0;  // distancia medida con el tanque vacío
-
-// --- Umbrales por defecto (se pueden cambiar después desde la web) ---
-// Histéresis: corta cuando llega arriba, vuelve a arrancar cuando baja.
-float nivelAltoCorte    = 80.0;  // % de llenado -> CORTAR la bomba (deja de cargar)
-float nivelBajoArranque = 30.0;  // % de llenado -> ARRANCAR la bomba (empieza a cargar)
+// --- Umbrales (llegan desde la web; hoy NO se usan porque no hay sensor) ---
+float nivelAltoCorte    = 80.0;
+float nivelBajoArranque = 30.0;
 
 // --- MODO PRUEBA ---
-// En 1: IGNORA el sensor y alterna CARGAR (ON) / CORTAR (OFF) cada 5 s,
+// En 1: IGNORA la web y alterna CARGAR (ON) / CORTAR (OFF) cada 5 s,
 //       para probar la radio y el relé con un patrón limpio.
-// Poné 0 para volver al funcionamiento normal por sensor.
+// Poné 0 para volver al funcionamiento normal.
 #define MODO_PRUEBA 0
 const unsigned long PRUEBA_MS = 5000;  // cada 5 s cambia de estado
 
@@ -67,11 +63,12 @@ const unsigned long PRUEBA_MS = 5000;  // cada 5 s cambia de estado
 // 2) PINES
 // ===========================================================================
 
-// Sensor JSN-SR04T (modo trigger/echo, igual que un HC-SR04)
-#define PIN_TRIG  26
-#define PIN_ECHO  25   // ¡Usar divisor! El ECHO sale a 5V y el ESP32 es 3.3V (vos usaste 100/180)
-
-// Radio NRF24L01 (bus SPI del ESP32: SCK=18, MISO=19, MOSI=23)
+// Radio NRF24L01 por SPI: SCK=18, MISO=19, MOSI=22, CE=4, CSN=5.
+// El MOSI va en el GPIO 22 (no en el 23 por defecto del VSPI): se pasa
+// explícito a SPI.begin() en iniciarRadio().
+#define PIN_SCK   18
+#define PIN_MISO  19
+#define PIN_MOSI  22
 #define PIN_CE    4
 #define PIN_CSN   5
 RF24 radio(PIN_CE, PIN_CSN);
@@ -87,16 +84,11 @@ String modo        = "AUTO";   // "AUTO" o "MANUAL"
 bool   manualPump  = false;    // en MANUAL: true = encender bomba
 bool   desiredPump = false;    // estado deseado actual de la bomba
 
-float  ultimoNivelPct  = 0;
-float  ultimaDistanciaCM = 0;
-
-unsigned long tSensor  = 0;
 unsigned long tRadio   = 0;
 unsigned long tServer  = 0;
 unsigned long tPrueba  = 0;      // temporizador del MODO PRUEBA
 bool          pruebaEstado = false;
 
-const unsigned long INTERVALO_SENSOR_MS = 1000;  // medir cada 1 s
 const unsigned long INTERVALO_RADIO_MS  = 1000;  // mandar orden cada 1 s
 const unsigned long INTERVALO_SERVER_MS = 10000; // hablar con el server cada 10 s
 
@@ -115,6 +107,17 @@ struct __attribute__((packed)) RadioMsg {
 };
 RadioMsg msg = {CMD_MAGIC, CMD_BOMBA_OFF, 0};
 
+bool          radioOk     = false;  // ¿el NRF24 respondió al inicializar?
+unsigned long tRadioRetry = 0;      // último intento de re-inicializar la radio
+
+// --- Seguimiento de los envíos por radio (lo ve la web) ---
+// El número de comando va de 1 a 100 y vuelve a empezar, así no crece sin fin.
+const uint32_t SEQ_MAX = 100;
+bool          ultimoAckOk   = false; // ¿el último envío tuvo acuse de recibo de la bomba?
+uint32_t      ultimoAckSeq  = 0;     // número del último comando que la bomba confirmó
+unsigned long tUltimoAck    = 0;     // millis() del último acuse (0 = nunca)
+uint16_t      histEnvios    = 0;     // bits: resultado de los últimos 10 envíos (1 = entregado)
+
 // ===========================================================================
 // 4) SETUP
 // ===========================================================================
@@ -122,25 +125,13 @@ void setup() {
   Serial.begin(115200);
   delay(200);
 
-  pinMode(PIN_TRIG, OUTPUT);
-  pinMode(PIN_ECHO, INPUT);
-  digitalWrite(PIN_TRIG, LOW);
-
   // --- Radio ---
-  if (!radio.begin()) {
-    Serial.println("ERROR: no se detecta el modulo NRF24. Revisar cableado.");
-  }
-  radio.setPALevel(RF24_PA_LOW);      // LOW = más estable en banco. Subir a HIGH solo con fuente sólida + capacitor.
-  radio.setDataRate(RF24_250KBPS);    // menor velocidad = más alcance/robustez
-  radio.setChannel(108);              // canal poco usado por WiFi
-  radio.setRetries(5, 15);
-  radio.openWritingPipe(pipeAddress); // este nodo TRANSMITE
-  radio.stopListening();
+  iniciarRadio();
 
   // --- WiFi ---
   conectarWiFi();
 
-  Serial.println("Nodo TANQUE iniciado.");
+  Serial.println("Nodo TANQUE iniciado (sin sensor de nivel).");
 }
 
 // ===========================================================================
@@ -149,20 +140,7 @@ void setup() {
 void loop() {
   unsigned long ahora = millis();
 
-  // --- a) Medir el nivel ---
-  if (ahora - tSensor >= INTERVALO_SENSOR_MS) {
-    tSensor = ahora;
-    ultimaDistanciaCM = medirDistanciaCM();
-    if (ultimaDistanciaCM > 0) {
-      ultimoNivelPct = distanciaANivelPct(ultimaDistanciaCM);
-    }
-    decidirBomba();
-    Serial.printf("Dist: %.1f cm | Nivel: %.0f%% | Modo: %s | Bomba: %s\n",
-                  ultimaDistanciaCM, ultimoNivelPct, modo.c_str(),
-                  desiredPump ? "ON" : "OFF");
-  }
-
-  // --- MODO PRUEBA: alterna CARGAR/CORTAR cada 5 s, ignorando el sensor ---
+  // --- MODO PRUEBA: alterna CARGAR/CORTAR cada 5 s, ignorando la web ---
 #if MODO_PRUEBA
   if (ahora - tPrueba >= PRUEBA_MS) {
     tPrueba = ahora;
@@ -172,13 +150,19 @@ void loop() {
   }
 #endif
 
-  // --- b) Enviar la orden por radio ---
+  // --- a) Enviar la orden por radio ---
   if (ahora - tRadio >= INTERVALO_RADIO_MS) {
     tRadio = ahora;
+    decidirBomba();
     enviarOrdenRadio();
+    Serial.printf("Modo: %s | Bomba: %s | Radio: %s | WiFi: %s\n",
+                  modo.c_str(),
+                  desiredPump ? "ON" : "OFF",
+                  radioOk ? "OK" : "SIN MODULO",
+                  WiFi.status() == WL_CONNECTED ? "OK" : "sin conexion");
   }
 
-  // --- c) Hablar con el servidor ---
+  // --- b) Hablar con el servidor ---
   if (ahora - tServer >= INTERVALO_SERVER_MS) {
     tServer = ahora;
     comunicarServidor();
@@ -186,82 +170,76 @@ void loop() {
 }
 
 // ===========================================================================
-// 6) MEDICIÓN DEL SENSOR (con filtrado por mediana, para ignorar salpicaduras)
-// ===========================================================================
-float medirDistanciaCM() {
-  const int N = 7;
-  float lecturas[N];
-  int validas = 0;
-
-  for (int i = 0; i < N; i++) {
-    digitalWrite(PIN_TRIG, LOW);  delayMicroseconds(3);
-    digitalWrite(PIN_TRIG, HIGH); delayMicroseconds(10);
-    digitalWrite(PIN_TRIG, LOW);
-
-    long dur = pulseIn(PIN_ECHO, HIGH, 30000UL); // timeout 30 ms (~5 m)
-    if (dur > 0) {
-      lecturas[validas++] = (dur * 0.0343) / 2.0; // cm
-    }
-    delay(40);
-  }
-
-  if (validas == 0) return -1; // sin lectura válida
-
-  // Ordenar (burbuja, son pocas lecturas) y devolver la mediana
-  for (int i = 0; i < validas - 1; i++) {
-    for (int j = 0; j < validas - 1 - i; j++) {
-      if (lecturas[j] > lecturas[j + 1]) {
-        float t = lecturas[j]; lecturas[j] = lecturas[j + 1]; lecturas[j + 1] = t;
-      }
-    }
-  }
-  return lecturas[validas / 2];
-}
-
-// Convierte la distancia medida en porcentaje de llenado (0–100 %)
-float distanciaANivelPct(float dist) {
-  float pct = (DIST_TANQUE_VACIO_CM - dist) /
-              (DIST_TANQUE_VACIO_CM - DIST_TANQUE_LLENO_CM) * 100.0;
-  if (pct < 0)   pct = 0;
-  if (pct > 100) pct = 100;
-  return pct;
-}
-
-// ===========================================================================
-// 7) LÓGICA DE DECISIÓN (histéresis)
+// 6) LÓGICA DE DECISIÓN
 // ===========================================================================
 void decidirBomba() {
 #if MODO_PRUEBA
-  return;  // en MODO PRUEBA el estado lo maneja el toggle de 5 s (ignora el sensor)
+  return;  // en MODO PRUEBA el estado lo maneja el toggle de 5 s
 #endif
   if (modo == "MANUAL") {
-    desiredPump = manualPump;            // la web manda directo
-    return;
+    desiredPump = manualPump;   // la web manda directo
+  } else {
+    desiredPump = false;        // AUTO sin sensor: no sabemos cuándo está lleno -> APAGADA
   }
-  // Modo AUTO con histéresis:
-  if (ultimoNivelPct >= nivelAltoCorte) {
-    desiredPump = false;                 // lleno -> cortar
-  } else if (ultimoNivelPct <= nivelBajoArranque) {
-    desiredPump = true;                  // bajo -> arrancar
-  }
-  // Entre los dos umbrales: mantiene el estado anterior (evita traqueteo).
 }
 
 // ===========================================================================
-// 8) ENVÍO POR RADIO
+// 7) RADIO
 // ===========================================================================
+// Inicializa el NRF24. Devuelve true si el módulo responde por SPI.
+bool iniciarRadio() {
+  SPI.begin(PIN_SCK, PIN_MISO, PIN_MOSI, PIN_CSN);
+  radioOk = radio.begin(&SPI) && radio.isChipConnected();
+  if (!radioOk) {
+    Serial.println("ERROR: no se detecta el modulo NRF24. Revisar cableado (SPI) y 3.3V.");
+    return false;
+  }
+  radio.setPALevel(RF24_PA_LOW);      // LOW = más estable en banco. Subir a HIGH solo con fuente sólida + capacitor.
+  radio.setDataRate(RF24_250KBPS);    // menor velocidad = más alcance/robustez
+  radio.setChannel(108);              // canal poco usado por WiFi
+  radio.setRetries(5, 15);
+  radio.openWritingPipe(pipeAddress); // este nodo TRANSMITE
+  radio.stopListening();
+  Serial.println("Radio NRF24 OK.");
+  return true;
+}
+
 void enviarOrdenRadio() {
+  // Sin módulo detectado NO llamamos a radio.write(): con el SPI mal cableado
+  // la librería se queda esperando para siempre y el nodo se cuelga.
+  // Cada 5 s reintentamos inicializarla por si se conectó/arregló en caliente.
+  if (!radioOk || !radio.isChipConnected()) {
+    radioOk = false;
+    if (millis() - tRadioRetry >= 5000) {
+      tRadioRetry = millis();
+      iniciarRadio();
+    }
+    if (!radioOk) return;
+  }
+
   msg.magic   = CMD_MAGIC;
   msg.command = desiredPump ? CMD_BOMBA_ON : CMD_BOMBA_OFF;
-  msg.seq++;
-  bool ok = radio.write(&msg, sizeof(msg));
-  if (!ok) {
-    Serial.println("Aviso: el nodo bomba no confirmo la recepcion (reintenta).");
+  msg.seq     = (msg.seq % SEQ_MAX) + 1;         // 1..100 y vuelve a 1
+  bool ok = radio.write(&msg, sizeof(msg));      // true = la radio de la bomba acusó recibo
+  ultimoAckOk = ok;
+  histEnvios  = ((histEnvios << 1) | (ok ? 1 : 0)) & 0x03FF;   // últimos 10 envíos
+  if (ok) {
+    ultimoAckSeq = msg.seq;
+    tUltimoAck   = millis();
+  } else {
+    Serial.printf("Aviso: comando #%lu sin acuse de la bomba (reintenta).\n", (unsigned long)msg.seq);
   }
 }
 
+// Cuántos de los últimos 10 envíos fueron entregados (0..10)
+int entregadosUltimos10() {
+  int n = 0;
+  for (uint16_t b = histEnvios; b; b >>= 1) n += (b & 1);
+  return n;
+}
+
 // ===========================================================================
-// 9) COMUNICACIÓN CON EL SERVIDOR
+// 8) COMUNICACIÓN CON EL SERVIDOR
 // ===========================================================================
 void comunicarServidor() {
   if (WiFi.status() != WL_CONNECTED) {
@@ -276,13 +254,18 @@ void comunicarServidor() {
   http.setConnectTimeout(6000);  // tiempo máximo para abrir la conexión TCP
   http.setTimeout(6000);         // tiempo máximo esperando la respuesta
 
-  // Armar el JSON con el estado actual
+  // Armar el JSON con el estado actual (sin nivel ni distancia: no hay sensor)
   StaticJsonDocument<256> body;
-  body["level_pct"]   = round(ultimoNivelPct);
-  body["distance_cm"] = round(ultimaDistanciaCM);
-  body["pump_on"]     = desiredPump;
-  body["modo"]        = modo;
-  body["rssi"]        = WiFi.RSSI();
+  body["pump_on"] = desiredPump;
+  body["modo"]    = modo;
+  body["rssi"]    = WiFi.RSSI();
+  // Enlace de radio con la bomba (para el indicador de la web)
+  body["radio_ok"]        = radioOk;            // el NRF24 del tanque responde
+  body["radio_seq"]       = msg.seq;            // último comando enviado (1..100)
+  body["radio_ack_ok"]    = ultimoAckOk;        // ¿ese último envío tuvo acuse?
+  body["radio_ack_seq"]   = ultimoAckSeq;       // último comando con acuse
+  body["radio_ack_hace_s"] = tUltimoAck ? (long)((millis() - tUltimoAck) / 1000) : -1;
+  body["radio_ult10"]     = entregadosUltimos10();
 
   String payload;
   serializeJson(body, payload);
@@ -312,12 +295,19 @@ void aplicarConfigDelServidor(const String& json) {
 
   if (doc.containsKey("modo"))                modo             = String((const char*)doc["modo"]);
   if (doc.containsKey("manual_pump"))         manualPump       = doc["manual_pump"];
+
+  // Si la orden cambió, volvemos a reportar enseguida (en ~1,5 s en vez de 10 s)
+  // para que la web vea rápido que el nodo tomó el comando y si la bomba lo acusó.
+  bool nuevoDeseado = (modo == "MANUAL") ? manualPump : false;
+  if (nuevoDeseado != desiredPump) {
+    tServer = millis() - INTERVALO_SERVER_MS + 1500;
+  }
   if (doc.containsKey("nivel_alto_corte"))    nivelAltoCorte   = doc["nivel_alto_corte"];
   if (doc.containsKey("nivel_bajo_arranque")) nivelBajoArranque= doc["nivel_bajo_arranque"];
 }
 
 // ===========================================================================
-// 10) WIFI
+// 9) WIFI
 // ===========================================================================
 void conectarWiFi() {
   if (WiFi.status() == WL_CONNECTED) return;
