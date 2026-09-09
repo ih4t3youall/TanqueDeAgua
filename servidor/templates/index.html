@@ -96,6 +96,14 @@
   .btn-off { background: rgba(248,113,113,.15); color: var(--bad); border: 1px solid var(--bad) !important; }
   .manual button.selected.btn-on  { background: var(--ok);  color: #052e16; }
   .manual button.selected.btn-off { background: var(--bad); color: #450a0a; }
+  .timer { margin-top: 12px; display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; }
+  .timer label { font-size: 13px; color: var(--muted); }
+  .timer input { width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line);
+                 background: var(--bg); color: var(--text); font-size: 16px; text-align: center; }
+  .timer input:focus { outline: none; border-color: var(--accent); }
+  .timer button { padding: 9px 12px; }
+  .timer-info { margin-top: 10px; font-size: 14px; color: var(--ok); }
+  .timer-info.hidden { display: none; }
   .auto-info { font-size: 14px; color: var(--muted); line-height: 1.6; }
   .auto-info b { color: var(--text); }
 
@@ -177,6 +185,12 @@
         <button id="btn-pump-on"  class="btn-on"  onclick="setBomba(true)">Encender</button>
         <button id="btn-pump-off" class="btn-off" onclick="setBomba(false)">Apagar</button>
       </div>
+      <div class="timer">
+        <label for="inp-min">Encender por</label>
+        <input id="inp-min" type="number" min="1" max="1440" step="1" value="5">
+        <button class="btn-on" onclick="setBombaPorTiempo()">minutos</button>
+      </div>
+      <div id="timer-info" class="timer-info hidden"></div>
     </div>
   </div>
 
@@ -245,6 +259,17 @@ function render(s) {
   // botones manuales
   document.getElementById("btn-pump-on").className  = "btn-on"  + (cfg.manual_pump ? " selected" : "");
   document.getElementById("btn-pump-off").className = "btn-off" + (!cfg.manual_pump ? " selected" : "");
+  // temporizador "encender por N minutos"
+  const inpMin = document.getElementById("inp-min");
+  if (document.activeElement !== inpMin && cfg.temporizador_min) inpMin.value = cfg.temporizador_min;
+  const tinfo = document.getElementById("timer-info");
+  if (cfg.manual_pump && cfg.restante_s > 0) {
+    const m = Math.floor(cfg.restante_s / 60), sec = cfg.restante_s % 60;
+    tinfo.className = "timer-info";
+    tinfo.textContent = "⏱ Se apaga sola en " + m + ":" + String(sec).padStart(2, "0");
+  } else {
+    tinfo.className = "timer-info hidden";
+  }
   // campos de umbrales (no pisar mientras el usuario está escribiendo)
   const inpBajo = document.getElementById("inp-bajo");
   const inpAlto = document.getElementById("inp-alto");
@@ -333,6 +358,15 @@ function setModo(m) {
 function setBomba(on) {
   if (cfg.modo !== "MANUAL") { toast("Primero pasá a modo manual"); return; }
   control({ manual_pump: on });
+}
+async function setBombaPorTiempo() {
+  if (cfg.modo !== "MANUAL") { toast("Primero pasá a modo manual"); return; }
+  const min = parseInt(document.getElementById("inp-min").value, 10);
+  if (isNaN(min) || min < 1 || min > 1440) { toast("Poné entre 1 y 1440 minutos"); return; }
+  document.activeElement.blur();
+  if (await control({ manual_pump: true, minutos: min })) {
+    toast("Bomba encendida por " + min + " min, después se apaga sola");
+  }
 }
 
 async function guardarUmbrales() {

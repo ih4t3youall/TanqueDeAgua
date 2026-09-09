@@ -128,9 +128,18 @@ actualiza rápido.
 y el servidor responde con la configuración:
 
 ```json
-{ "modo": "AUTO", "manual_pump": false,
-  "nivel_alto_corte": 95.0, "nivel_bajo_arranque": 60.0 }
+{ "modo": "MANUAL", "manual_pump": true,
+  "manual_pump_hasta": 1788985533.4, "restante_s": 277, "temporizador_min": 5,
+  "nivel_alto_corte": 80.0, "nivel_bajo_arranque": 30.0 }
 ```
+
+**Encender por N minutos:** desde la web se puede encender la bomba con un
+temporizador (5 min por defecto). El servidor guarda hasta cuándo tiene que
+quedar encendida (`manual_pump_hasta`) y, cuando vence, pone `manual_pump` en
+`false`. El nodo se entera en su próxima consulta, así que la bomba se apaga
+hasta 10 s después del vencimiento. El nodo no lleva el temporizador por su
+cuenta: si el servidor se cae con la bomba encendida por tiempo, el nodo
+mantiene la última orden (encendida) hasta que el servidor vuelva.
 
 ## Decisiones de diseño y por qué
 

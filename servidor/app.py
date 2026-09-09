@@ -79,6 +79,8 @@ config = {
     # --- control de la bomba ---
     "modo": "AUTO",               # "AUTO" o "MANUAL"
     "manual_pump": False,         # en MANUAL: True = bomba encendida
+    "manual_pump_hasta": 0,       # timestamp hasta el que queda encendida (0 = sin límite)
+    "temporizador_min": 5,        # último valor usado en "Encender por N minutos"
     "nivel_alto_corte": 80.0,     # % -> deja de cargar
     "nivel_bajo_arranque": 30.0,  # % -> empieza a cargar
 }
@@ -280,6 +282,37 @@ def logout():
 #  API que usa el ESP32 (autenticada por token)
 # ---------------------------------------------------------------------------
 
+def vencer_temporizador():
+    """Si la bomba estaba encendida "por N minutos" y ya pasó el tiempo, la apaga."""
+    hasta = config.get("manual_pump_hasta") or 0
+    if config["manual_pump"] and hasta and time.time() >= hasta:
+        config["manual_pump"] = False
+        config["manual_pump_hasta"] = 0
+        state["cmd_ts"] = time.time()
+        guardar_config()
+
+
+def restante_s():
+    """Segundos que le quedan al temporizador (0 si no hay)."""
+    hasta = config.get("manual_pump_hasta") or 0
+    if config["manual_pump"] and hasta:
+        return max(0, int(hasta - time.time()))
+    return 0
+
+
+def config_publica():
+    """Lo que ven la web y el nodo: modo, bomba manual, temporizador y umbrales."""
+    return {
+        "modo": config["modo"],
+        "manual_pump": config["manual_pump"],
+        "manual_pump_hasta": config.get("manual_pump_hasta") or 0,
+        "restante_s": restante_s(),
+        "temporizador_min": config.get("temporizador_min") or 5,
+        "nivel_alto_corte": config["nivel_alto_corte"],
+        "nivel_bajo_arranque": config["nivel_bajo_arranque"],
+    }
+
+
 def _numero(valor, minimo, maximo, previo):
     """Convierte a float y lo acota al rango; si no es un número, deja el previo."""
     try:
@@ -295,6 +328,7 @@ def _numero(valor, minimo, maximo, previo):
 @requiere_token_dispositivo
 def api_status():
     """El ESP32 reporta su estado cada 10 s y recibe la configuración."""
+    vencer_temporizador()
     data = request.get_json(force=True, silent=True) or {}
 
     state["level_pct"]   = _numero(data.get("level_pct"), 0, 100, state["level_pct"])
@@ -310,12 +344,7 @@ def api_status():
     state["last_seen"]   = time.time()
 
     # Solo lo que el nodo necesita (no le mandamos las credenciales web)
-    return jsonify({
-        "modo": config["modo"],
-        "manual_pump": config["manual_pump"],
-        "nivel_alto_corte": config["nivel_alto_corte"],
-        "nivel_bajo_arranque": config["nivel_bajo_arranque"],
-    })
+    return jsonify(config_publica())
 
 
 # ---------------------------------------------------------------------------
@@ -326,18 +355,14 @@ def api_status():
 @requiere_login_api
 def api_state():
     """Estado completo para refrescar el dashboard."""
+    vencer_temporizador()
     online = (time.time() - state["last_seen"]) < ONLINE_TIMEOUT_S
     segundos = int(time.time() - state["last_seen"]) if state["last_seen"] else None
     return jsonify({
         **state,
         "online": online,
         "segundos_desde_reporte": segundos,
-        "config": {
-            "modo": config["modo"],
-            "manual_pump": config["manual_pump"],
-            "nivel_alto_corte": config["nivel_alto_corte"],
-            "nivel_bajo_arranque": config["nivel_bajo_arranque"],
-        },
+        "config": config_publica(),
     })
 
 
@@ -349,11 +374,23 @@ def api_control():
 
     if "modo" in data and data["modo"] in ("AUTO", "MANUAL"):
         config["modo"] = data["modo"]
+        config["manual_pump_hasta"] = 0
         # Al pasar a MANUAL, arrancamos con la bomba apagada por las dudas
         if config["modo"] == "MANUAL" and "manual_pump" not in data:
             config["manual_pump"] = False
     if "manual_pump" in data:
         config["manual_pump"] = bool(data["manual_pump"])
+        config["manual_pump_hasta"] = 0
+        # "Encender por N minutos": la bomba se apaga sola cuando vence
+        if config["manual_pump"] and data.get("minutos") is not None:
+            try:
+                minutos = float(data["minutos"])
+            except (TypeError, ValueError):
+                return jsonify({"error": "minutos invalidos"}), 400
+            if not (0 < minutos <= 24 * 60):
+                return jsonify({"error": "los minutos deben estar entre 1 y 1440"}), 400
+            config["manual_pump_hasta"] = time.time() + minutos * 60
+            config["temporizador_min"] = minutos
     if "modo" in data or "manual_pump" in data:
         state["cmd_ts"] = time.time()   # para que la web muestre "esperando al nodo"
 
@@ -370,12 +407,7 @@ def api_control():
         config["nivel_bajo_arranque"] = bajo
 
     guardar_config()
-    return jsonify({
-        "modo": config["modo"],
-        "manual_pump": config["manual_pump"],
-        "nivel_alto_corte": config["nivel_alto_corte"],
-        "nivel_bajo_arranque": config["nivel_bajo_arranque"],
-    })
+    return jsonify(config_publica())
 
 
 @app.route("/")

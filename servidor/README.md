@@ -15,6 +15,10 @@ Aplicación web para monitorear y controlar el tanque. El nodo tanque
   su próximo reporte y se persisten en `config.json`.
 - **Modo manual**: la bomba se enciende/apaga desde la web (deja de ser
   automático hasta que vuelvas a AUTO).
+- **Encender por N minutos** (por defecto 5): la bomba arranca y el servidor
+  la apaga solo cuando vence el tiempo. La web muestra la cuenta regresiva.
+  El apagado lo aplica el servidor, así que el nodo lo recibe en su próxima
+  consulta (hasta 10 s después de vencer).
 
 ## Cómo correrlo
 
@@ -71,7 +75,7 @@ Reiniciá el servidor después de editar `config.json`.
 |---|---|---|
 | `POST /api/status` | ESP32: reporta estado, recibe config | header `X-API-Token` |
 | `GET /api/state` | Web: refresca el dashboard | cookie de sesión |
-| `POST /api/control` | Web: cambia modo / bomba manual | cookie de sesión |
+| `POST /api/control` | Web: cambia modo / bomba manual / `{"manual_pump":true,"minutos":N}` | cookie de sesión |
 | `GET/POST /login`, `GET /logout` | Web | — |
 
 ## Recordatorio del lado del ESP32
