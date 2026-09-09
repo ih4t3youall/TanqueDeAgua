@@ -116,7 +116,11 @@ entrá a `http://IP-DE-TU-SERVIDOR:5000`.
 En la web vas a ver:
 
 - **Nivel actual** del tanque: hoy queda en 0 % porque el nodo ya no tiene sensor.
-- **Estado de la bomba** (encendida/apagada) y si el tanque está **en línea**.
+- **Estado de la bomba**: la etiqueta ENCENDIDA / APAGADA cambia **solo cuando
+  el nodo bomba acusó recibo** del comando. Mientras espera, avisa "esperando
+  acuse para ENCENDER/APAGAR". Si nunca hubo acuse dice "SIN CONFIRMAR", y si
+  pasan más de 2 min sin radio se muestra APAGADA por el fail-safe del nodo bomba.
+- Si el tanque está **en línea**.
 - **Enlace con la bomba**: si el nodo bomba acusa recibo de cada comando por
   radio, y el estado del último comando (enviado / en tránsito / entregado).
 - **Bomba**: botones Encender y Apagar. Queda como la dejes.

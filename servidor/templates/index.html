@@ -73,6 +73,8 @@
   }
   .pump.on  { background: rgba(74,222,128,.15); color: var(--ok); }
   .pump.off { background: rgba(148,163,184,.15); color: var(--muted); }
+  .pump.unknown { background: rgba(251,191,36,.15); color: var(--warn); }
+  .pump-note { font-size: 12px; color: var(--warn); margin-top: 8px; min-height: 14px; }
 
   /* ---- controles ---- */
   h2 { font-size: 15px; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
@@ -121,7 +123,8 @@
       <div class="big">
         <div class="pct"><span id="pct">--</span>%</div>
         <div class="sub" id="dist">distancia: -- cm</div>
-        <div id="pump" class="pump off">BOMBA APAGADA</div>
+        <div id="pump" class="pump unknown">BOMBA: SIN CONFIRMAR</div>
+        <div id="pump-note" class="pump-note"></div>
       </div>
     </div>
   </div>
@@ -177,10 +180,8 @@ function render(s) {
   document.getElementById("pct").textContent = Math.round(s.level_pct);
   document.getElementById("water").style.height = Math.max(0, Math.min(100, s.level_pct)) + "%";
   document.getElementById("dist").textContent = "distancia: " + s.distance_cm + " cm";
-  // bomba
-  const pump = document.getElementById("pump");
-  pump.className = "pump " + (s.pump_on ? "on" : "off");
-  pump.textContent = s.pump_on ? "BOMBA ENCENDIDA" : "BOMBA APAGADA";
+  // bomba: la etiqueta muestra SOLO lo que la bomba confirmó con acuse de recibo
+  renderBomba(s);
   // online
   document.getElementById("dot").className = "dot " + (s.online ? "on" : "off");
   document.getElementById("online-txt").textContent = s.online ? "Nodo tanque en línea" : "Sin conexión con el tanque";
@@ -202,6 +203,27 @@ function render(s) {
     tinfo.textContent = "⏱ Se apaga sola en " + m + ":" + String(sec).padStart(2, "0");
   } else {
     tinfo.className = "timer-info hidden";
+  }
+}
+
+// Etiqueta de la bomba: cambia únicamente con acuse de recibo del nodo bomba.
+// Si la radio lleva más de 2 min sin acuse, el nodo bomba corta solo (fail-safe).
+const FAILSAFE_S = 120;
+function renderBomba(s) {
+  const pump = document.getElementById("pump");
+  const note = document.getElementById("pump-note");
+  const sinRadio = s.radio_ack_hace_s < 0 || s.radio_ack_hace_s >= FAILSAFE_S;
+  if (s.pump_confirmado === null || s.pump_confirmado === undefined) {
+    pump.className = "pump unknown"; pump.textContent = "BOMBA: SIN CONFIRMAR";
+    note.textContent = s.online ? "la bomba todavía no acusó recibo de ningún comando" : "";
+  } else if (s.pump_confirmado && s.online && sinRadio) {
+    pump.className = "pump off"; pump.textContent = "BOMBA APAGADA";
+    note.textContent = "por fail-safe: más de 2 min sin radio, el nodo bomba corta solo";
+  } else {
+    pump.className = "pump " + (s.pump_confirmado ? "on" : "off");
+    pump.textContent = s.pump_confirmado ? "BOMBA ENCENDIDA" : "BOMBA APAGADA";
+    note.textContent = (s.online && s.pump_on !== s.pump_confirmado)
+      ? "esperando acuse para " + (s.pump_on ? "ENCENDER" : "APAGAR") + "…" : "";
   }
 }
 

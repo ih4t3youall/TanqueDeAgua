@@ -68,6 +68,9 @@ state = {
     "radio_ack_hace_s": -1,   # segundos desde el último acuse (-1 = nunca)
     "radio_ult10": 0,         # cuántos de los últimos 10 envíos se entregaron
     "cmd_ts": 0,              # cuándo se mandó el último comando desde la web
+    # --- estado CONFIRMADO de la bomba: solo cambia cuando hay acuse de recibo ---
+    "pump_confirmado": None,  # True/False, None = nunca se confirmó nada
+    "pump_confirmado_ts": 0,  # cuándo fue la última confirmación
 }
 
 # Configuración (se persiste en config.json)
@@ -342,6 +345,11 @@ def api_status():
     state["radio_ack_hace_s"] = int(_numero(data.get("radio_ack_hace_s"), -1, 10**7, state["radio_ack_hace_s"]))
     state["radio_ult10"]  = int(_numero(data.get("radio_ult10"), 0, 10, state["radio_ult10"]))
     state["last_seen"]   = time.time()
+    # El nodo tanque manda la orden por radio y recién después reporta. Si ese
+    # último envío tuvo acuse de la bomba, el estado que ordenó queda CONFIRMADO.
+    if state["radio_ok"] and state["radio_ack_ok"]:
+        state["pump_confirmado"] = state["pump_on"]
+        state["pump_confirmado_ts"] = time.time()
 
     # Solo lo que el nodo necesita (no le mandamos las credenciales web)
     return jsonify(config_publica())

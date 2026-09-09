@@ -119,6 +119,11 @@ Los campos `radio_*` describen el enlace tanque → bomba y alimentan la tarjeta
 - `radio_ack_seq` y `radio_ack_hace_s`: último comando confirmado y hace cuánto.
 - `radio_ult10`: cuántos de los últimos 10 envíos se entregaron (calidad del enlace).
 
+El servidor además guarda el **estado confirmado** de la bomba
+(`pump_confirmado`): solo lo actualiza cuando un reporte trae `radio_ack_ok`,
+o sea cuando el nodo bomba acusó recibo de la orden. La etiqueta "BOMBA
+ENCENDIDA / APAGADA" de la web usa ese valor, no lo que el tanque ordena.
+
 Con eso la web muestra el ciclo completo de un comando: **enviado al servidor →
 esperando que el nodo tanque lo tome (hasta 10 s) → en tránsito por radio →
 entregado a la bomba con acuse #N**. Cuando el nodo tanque recibe una orden
