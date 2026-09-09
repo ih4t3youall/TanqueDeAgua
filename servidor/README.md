@@ -9,12 +9,10 @@ Aplicación web para monitorear y controlar el tanque. El nodo tanque
 - **Token de dispositivo**: el ESP32 debe mandar el header `X-API-Token`
   correcto en cada reporte; sin él, el servidor lo rechaza (401).
 - El nodo tanque **reporta cada 10 segundos** el nivel de agua.
-- **Modo automático**: la bomba arranca cuando el nivel baja del **30 %**
-  y corta cuando llega al **80 %**. Los umbrales se pueden **cambiar desde
-  la web** (tarjeta "Umbrales del modo automático"); el nodo los recibe en
-  su próximo reporte y se persisten en `config.json`.
-- **Modo manual**: la bomba se enciende/apaga desde la web (deja de ser
-  automático hasta que vuelvas a AUTO).
+- **Bomba**: se enciende/apaga desde la web. Sin sensor de nivel, la web
+  trabaja siempre en modo MANUAL (el modo AUTO y los umbrales siguen en la
+  API y en `config.json`, pero no se muestran en la web hasta que vuelva a
+  haber sensor).
 - **Encender por N minutos** (por defecto 5): la bomba arranca y el servidor
   la apaga solo cuando vence el tiempo. La web muestra la cuenta regresiva.
   El apagado lo aplica el servidor, así que el nodo lo recibe en su próxima

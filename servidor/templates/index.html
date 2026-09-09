@@ -76,53 +76,24 @@
 
   /* ---- controles ---- */
   h2 { font-size: 15px; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
-  .mode {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-    background: var(--bg); border-radius: 12px; padding: 6px; margin-bottom: 16px;
-  }
-  .mode button {
-    padding: 12px; border: none; border-radius: 9px; font-size: 15px; font-weight: 700;
-    background: transparent; color: var(--muted); cursor: pointer;
-  }
-  .mode button.active { background: var(--accent); color: #082f49; }
-  .manual { display: none; }
-  .manual.visible { display: block; }
-  .manual .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .manual button {
+  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btns button, .timer button {
     padding: 16px; border: none; border-radius: 12px; font-size: 16px; font-weight: 800;
     cursor: pointer;
   }
   .btn-on  { background: rgba(74,222,128,.18); color: var(--ok);  border: 1px solid var(--ok) !important; }
   .btn-off { background: rgba(248,113,113,.15); color: var(--bad); border: 1px solid var(--bad) !important; }
-  .manual button.selected.btn-on  { background: var(--ok);  color: #052e16; }
-  .manual button.selected.btn-off { background: var(--bad); color: #450a0a; }
-  .timer { margin-top: 12px; display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; }
-  .timer label { font-size: 13px; color: var(--muted); }
-  .timer input { width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line);
-                 background: var(--bg); color: var(--text); font-size: 16px; text-align: center; }
+  .btns button.selected.btn-on  { background: var(--ok);  color: #052e16; }
+  .btns button.selected.btn-off { background: var(--bad); color: #450a0a; }
+  .timer { display: grid; grid-template-columns: 1fr auto 1.4fr; gap: 10px; align-items: center; }
+  .timer input { width: 100%; padding: 14px 10px; border-radius: 12px; border: 1px solid var(--border);
+                 background: var(--bg); color: var(--text); font-size: 20px; font-weight: 700; text-align: center; }
   .timer input:focus { outline: none; border-color: var(--accent); }
-  .timer button { padding: 9px 12px; }
-  .timer-info { margin-top: 10px; font-size: 14px; color: var(--ok); }
+  .timer .unit { font-size: 14px; color: var(--muted); }
+  .timer-info { margin-top: 12px; font-size: 15px; font-weight: 600; color: var(--ok); }
   .timer-info.hidden { display: none; }
-  .auto-info { font-size: 14px; color: var(--muted); line-height: 1.6; }
-  .auto-info b { color: var(--text); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
 
-  /* ---- umbrales ---- */
-  .umbrales { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
-  .umbrales label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
-  .umbrales input {
-    width: 100%; padding: 11px; font-size: 16px;
-    background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
-    color: var(--text);
-  }
-  .umbrales input:focus { outline: none; border-color: var(--accent); }
-  .umbrales button {
-    padding: 12px 18px; border: none; border-radius: 10px;
-    background: var(--accent); color: #082f49; font-size: 14px; font-weight: 700;
-    cursor: pointer;
-  }
-  .umbrales button:active { opacity: .85; }
-  .umbrales-hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
   .meta { font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; }
   .toast {
     position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -146,10 +117,6 @@
     <div class="tank-area">
       <div class="tank">
         <div id="water" class="water"></div>
-        <div class="marks">
-          <div class="mark" id="mark-alto"></div>
-          <div class="mark" id="mark-bajo"></div>
-        </div>
       </div>
       <div class="big">
         <div class="pct"><span id="pct">--</span>%</div>
@@ -169,45 +136,23 @@
   </div>
 
   <div class="card">
-    <h2>Modo de funcionamiento</h2>
-    <div class="mode">
-      <button id="btn-auto" onclick="setModo('AUTO')">Automático</button>
-      <button id="btn-manual" onclick="setModo('MANUAL')">Manual</button>
+    <h2>Bomba</h2>
+    <div class="btns">
+      <button id="btn-pump-on"  class="btn-on"  onclick="setBomba(true)">Encender</button>
+      <button id="btn-pump-off" class="btn-off" onclick="setBomba(false)">Apagar</button>
     </div>
-
-    <div id="panel-auto" class="auto-info">
-      Carga automática: la bomba <b>arranca</b> cuando el nivel baja de
-      <b id="umbral-bajo">30%</b> y <b>corta</b> cuando llega a <b id="umbral-alto">80%</b>.
-    </div>
-
-    <div id="panel-manual" class="manual">
-      <div class="btns">
-        <button id="btn-pump-on"  class="btn-on"  onclick="setBomba(true)">Encender</button>
-        <button id="btn-pump-off" class="btn-off" onclick="setBomba(false)">Apagar</button>
-      </div>
-      <div class="timer">
-        <label for="inp-min">Encender por</label>
-        <input id="inp-min" type="number" min="1" max="1440" step="1" value="5">
-        <button class="btn-on" onclick="setBombaPorTiempo()">minutos</button>
-      </div>
-      <div id="timer-info" class="timer-info hidden"></div>
-    </div>
+    <div class="hint">Queda como la dejes hasta que la cambies. El nodo toma el cambio en hasta 10 s.</div>
   </div>
 
   <div class="card">
-    <h2>Umbrales del modo automático</h2>
-    <div class="umbrales">
-      <div>
-        <label for="inp-bajo">Arranca debajo de (%)</label>
-        <input id="inp-bajo" type="number" min="0" max="99" step="1">
-      </div>
-      <div>
-        <label for="inp-alto">Corta al llegar a (%)</label>
-        <input id="inp-alto" type="number" min="1" max="100" step="1">
-      </div>
-      <button onclick="guardarUmbrales()">Guardar</button>
+    <h2>Encender por tiempo</h2>
+    <div class="timer">
+      <input id="inp-min" type="number" min="1" max="1440" step="1" value="5" inputmode="numeric">
+      <span class="unit">minutos</span>
+      <button class="btn-on" onclick="setBombaPorTiempo()">Encender</button>
     </div>
-    <div class="umbrales-hint">El de arranque tiene que ser menor que el de corte. El nodo los recibe en su próximo reporte (hasta 10 s).</div>
+    <div id="timer-info" class="timer-info hidden"></div>
+    <div class="hint">La bomba arranca ahora y se apaga sola cuando pasa el tiempo (apagar a mano lo cancela).</div>
   </div>
 
   <div class="card meta">
@@ -232,13 +177,6 @@ function render(s) {
   document.getElementById("pct").textContent = Math.round(s.level_pct);
   document.getElementById("water").style.height = Math.max(0, Math.min(100, s.level_pct)) + "%";
   document.getElementById("dist").textContent = "distancia: " + s.distance_cm + " cm";
-  // marcas de umbral
-  const mAlto = document.getElementById("mark-alto");
-  const mBajo = document.getElementById("mark-bajo");
-  mAlto.style.bottom = cfg.nivel_alto_corte + "%";  mAlto.textContent = cfg.nivel_alto_corte + "%";
-  mBajo.style.bottom = cfg.nivel_bajo_arranque + "%"; mBajo.textContent = cfg.nivel_bajo_arranque + "%";
-  document.getElementById("umbral-alto").textContent = cfg.nivel_alto_corte + "%";
-  document.getElementById("umbral-bajo").textContent = cfg.nivel_bajo_arranque + "%";
   // bomba
   const pump = document.getElementById("pump");
   pump.className = "pump " + (s.pump_on ? "on" : "off");
@@ -251,12 +189,7 @@ function render(s) {
     (s.segundos_desde_reporte == null ? "nunca" : "hace " + s.segundos_desde_reporte + " s");
   // enlace de radio con la bomba
   renderEnlace(s);
-  // modo
-  document.getElementById("btn-auto").className   = cfg.modo === "AUTO"   ? "active" : "";
-  document.getElementById("btn-manual").className = cfg.modo === "MANUAL" ? "active" : "";
-  document.getElementById("panel-auto").style.display = cfg.modo === "AUTO" ? "block" : "none";
-  document.getElementById("panel-manual").className = "manual" + (cfg.modo === "MANUAL" ? " visible" : "");
-  // botones manuales
+  // botones de la bomba
   document.getElementById("btn-pump-on").className  = "btn-on"  + (cfg.manual_pump ? " selected" : "");
   document.getElementById("btn-pump-off").className = "btn-off" + (!cfg.manual_pump ? " selected" : "");
   // temporizador "encender por N minutos"
@@ -269,13 +202,6 @@ function render(s) {
     tinfo.textContent = "⏱ Se apaga sola en " + m + ":" + String(sec).padStart(2, "0");
   } else {
     tinfo.className = "timer-info hidden";
-  }
-  // campos de umbrales (no pisar mientras el usuario está escribiendo)
-  const inpBajo = document.getElementById("inp-bajo");
-  const inpAlto = document.getElementById("inp-alto");
-  if (document.activeElement !== inpBajo && document.activeElement !== inpAlto) {
-    inpBajo.value = cfg.nivel_bajo_arranque;
-    inpAlto.value = cfg.nivel_alto_corte;
   }
 }
 
@@ -307,8 +233,8 @@ function renderEnlace(s) {
   stats.textContent = "últimos 10 envíos: " + s.radio_ult10 + " entregados";
 
   // comando: qué ordenó la web, si el nodo lo tomó y si la bomba lo acusó
-  const orden = cfg.modo === "MANUAL" ? (cfg.manual_pump ? "ENCENDER" : "APAGAR") : "APAGAR (modo AUTO)";
-  const deseadoWeb = cfg.modo === "MANUAL" ? cfg.manual_pump : false;
+  const deseadoWeb = cfg.modo === "MANUAL" && cfg.manual_pump;
+  const orden = deseadoWeb ? "ENCENDER" : "APAGAR";
   const haceCmd = s.cmd_ts ? Math.round(Date.now() / 1000 - s.cmd_ts) : null;
   if (deseadoWeb !== s.pump_on) {
     cmd.className = "cmd wait";
@@ -351,37 +277,19 @@ async function control(body) {
   } catch (e) { toast("No se pudo enviar el comando"); return false; }
 }
 
-function setModo(m) {
-  control({ modo: m });
-  if (m === "MANUAL") toast("Modo manual: la bomba queda apagada hasta que la enciendas");
-}
+// Sin sensor de nivel, la web trabaja siempre en MANUAL: cada orden lo manda junto.
 function setBomba(on) {
-  if (cfg.modo !== "MANUAL") { toast("Primero pasá a modo manual"); return; }
-  control({ manual_pump: on });
+  control({ modo: "MANUAL", manual_pump: on });
 }
 async function setBombaPorTiempo() {
-  if (cfg.modo !== "MANUAL") { toast("Primero pasá a modo manual"); return; }
   const min = parseInt(document.getElementById("inp-min").value, 10);
   if (isNaN(min) || min < 1 || min > 1440) { toast("Poné entre 1 y 1440 minutos"); return; }
   document.activeElement.blur();
-  if (await control({ manual_pump: true, minutos: min })) {
+  if (await control({ modo: "MANUAL", manual_pump: true, minutos: min })) {
     toast("Bomba encendida por " + min + " min, después se apaga sola");
   }
 }
 
-async function guardarUmbrales() {
-  const bajo = parseFloat(document.getElementById("inp-bajo").value);
-  const alto = parseFloat(document.getElementById("inp-alto").value);
-  if (isNaN(bajo) || isNaN(alto)) { toast("Completá los dos umbrales"); return; }
-  if (!(bajo >= 0 && bajo < alto && alto <= 100)) {
-    toast("El de arranque tiene que ser menor que el de corte (0–100)");
-    return;
-  }
-  document.activeElement.blur();
-  if (await control({ nivel_bajo_arranque: bajo, nivel_alto_corte: alto })) {
-    toast("Umbrales guardados: arranca <" + bajo + "%, corta al " + alto + "%");
-  }
-}
 
 refresh();
 setInterval(refresh, 2000);

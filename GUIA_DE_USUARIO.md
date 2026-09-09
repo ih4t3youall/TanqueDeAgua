@@ -117,10 +117,14 @@ En la web vas a ver:
 
 - **Nivel actual** del tanque: hoy queda en 0 % porque el nodo ya no tiene sensor.
 - **Estado de la bomba** (encendida/apagada) y si el tanque está **en línea**.
-- **Modo:**
-  - **AUTO** — sin sensor, la bomba queda apagada.
-  - **MANUAL** — vos encendés/apagás con los botones de la web (modo de uso actual).
-- **Umbrales** — se guardan pero no se usan mientras no haya sensor.
+- **Enlace con la bomba**: si el nodo bomba acusa recibo de cada comando por
+  radio, y el estado del último comando (enviado / en tránsito / entregado).
+- **Bomba**: botones Encender y Apagar. Queda como la dejes.
+- **Encender por tiempo**: ponés los minutos (5 por defecto) y Encender. La
+  bomba arranca y se apaga sola cuando pasa el tiempo; la web muestra la
+  cuenta regresiva. Apagar a mano lo cancela.
+
+El modo automático y los umbrales no aparecen en la web mientras no haya sensor.
 
 ## Solución de problemas
 
