@@ -46,7 +46,7 @@ Cada segundo:
    luces, modo, señal WiFi) y recibe de vuelta la configuración que pusiste en
    la web (modo AUTO/MANUAL, comando manual y estado de las luces).
 
-4. **Aplica el relé de luces** (GPIO 26) con el `luces_on` que le mandó el
+4. **Aplica el relé de luces** (GPIO 25) con el `luces_on` que le mandó el
    servidor. El nodo no decide nada sobre las luces: el servidor resuelve si
    corresponde encendido manual u horario. Si se cae el WiFi o el servidor, las
    luces quedan como estaban (no hay fail-safe: no es peligroso que sigan
