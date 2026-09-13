@@ -186,8 +186,8 @@
         </g>
         <rect class="usb" x="121" y="470" width="60" height="18" rx="3"/>
         <text class="lbl-s" x="151" y="512" text-anchor="middle">micro-USB · fuente 5V ≥ 1 A</text>
-        <text class="lbl-s" x="151" y="400" text-anchor="middle">G25 / G26 quedan libres</text>
-        <text class="lbl-s" x="151" y="416" text-anchor="middle">(antes TRIG / ECHO del sensor)</text>
+        <text class="lbl-s" x="151" y="400" text-anchor="middle">G26 → IN del relé de luces</text>
+        <text class="lbl-s" x="151" y="416" text-anchor="middle">G25 queda libre</text>
 
         <!-- ===== nRF24L01 ===== -->
         <rect class="ant" x="770" y="40" width="80" height="22" rx="4"/>
@@ -249,6 +249,16 @@
             <tr><td class="pin">IRQ</td><td class="pin">—</td><td>libre, el código no lo usa</td></tr>
           </tbody>
         </table>
+        <h3>Relé de luces (1 canal)</h3>
+        <table>
+          <thead><tr><th>Pin del relé</th><th>Va a</th><th>Nota</th></tr></thead>
+          <tbody>
+            <tr><td class="pin"><span class="sw" style="background:var(--v5)"></span>VCC</td><td class="pin">ESP32 VIN (5V)</td><td>la bobina del relé necesita 5V</td></tr>
+            <tr><td class="pin"><span class="sw" style="background:var(--ink)"></span>GND</td><td class="pin">GND común</td><td></td></tr>
+            <tr><td class="pin">IN</td><td class="pin">GPIO 26</td><td>en el código: <span class="mono">PIN_RELE_LUCES</span> (activo en bajo)</td></tr>
+            <tr><td class="pin">COM / NO</td><td class="pin">fase de las luces</td><td>en serie, como una llave de luz. ⚡ 220 V: sin tensión al cablear</td></tr>
+          </tbody>
+        </table>
       </div>
       <div>
         <h3>AMS1117 (regulador)</h3>
@@ -304,7 +314,7 @@
         <figcaption>A la izquierda de cada pin, el GPIO del ESP32 al que va. Si el módulo está dado vuelta, las columnas se invierten: ubicá primero el par GND/VCC del borde.</figcaption>
       </figure>
       <div style="display:flex;flex-direction:column;gap:12px">
-        <div class="note ok"><p><strong>Qué cambió respecto a la versión anterior.</strong> Se sacó el sensor JSN-SR04T y su divisor de tensión (100 Ω / 180 Ω). Los GPIO 25 y 26 quedan libres. El código ya no mide nivel: en modo MANUAL la bomba obedece a la web, y en modo AUTO queda apagada por seguridad.</p></div>
+        <div class="note ok"><p><strong>Qué cambió respecto a la versión anterior.</strong> Se sacó el sensor JSN-SR04T y su divisor de tensión (100 Ω / 180 Ω). El GPIO 26 ahora maneja el relé de las luces (encendido/apagado desde la web, a mano o por horario) y el GPIO 25 queda libre. El código ya no mide nivel: en modo MANUAL la bomba obedece a la web, y en modo AUTO queda apagada por seguridad.</p></div>
         <p style="color:var(--muted);font-size:14px">Parámetros de radio que deben coincidir con el nodo bomba: dirección <span class="mono">TANK1</span>, canal 108, 250 kbps, potencia LOW mientras pruebes en el banco.</p>
       </div>
     </div>

@@ -16,8 +16,8 @@ juntar todo.
 
 ## 2. Conexiones del NODO TANQUE (ESP32)
 
-> El nodo tanque **ya no lleva sensor de nivel**. Solo tiene el ESP32, la radio
-> y el regulador. Diagrama con gráficos: `diagramas/conexiones_nodo_tanque.html`.
+> El nodo tanque **ya no lleva sensor de nivel**. Tiene el ESP32, la radio, el
+> regulador y un relé para las luces. Diagrama con gráficos: `diagramas/conexiones_nodo_tanque.html`.
 > Detalle en `nodo_tanque/CABLEADO_nodo_tanque.md`.
 
 ### Radio NRF24L01 (alimentada por el AMS1117 5V→3.3V)
@@ -37,6 +37,17 @@ juntar todo.
 | IN | VIN (5V) del ESP32 |
 | GND | GND común |
 | OUT | VCC del NRF24 |
+
+### Relé de luces (1 canal, 5V, optoacoplado)
+| Relé | ESP32 |
+|---|---|
+| VCC | VIN (5V) |
+| GND | GND común |
+| IN | GPIO 26 |
+
+Los contactos **COM** y **NO** van en serie con la fase de las luces, como una
+llave de luz. ⚡ Es tensión de red: cortá la alimentación antes de cablear.
+Si las luces quedan al revés al cargar el código, cambiá `LUCES_ON` / `LUCES_OFF`.
 
 ## 3. Conexiones del NODO BOMBA (Arduino Nano)
 
@@ -127,6 +138,12 @@ En la web vas a ver:
 - **Encender por tiempo**: ponés los minutos (5 por defecto) y Encender. La
   bomba arranca y se apaga sola cuando pasa el tiempo; la web muestra la
   cuenta regresiva. Apagar a mano lo cancela.
+- **Luces**: botones Encender y Apagar, y un **horario automático** diario:
+  marcás la casilla, ponés la hora de encendido y la de apagado (puede cruzar
+  la medianoche, ej. 20:00 → 06:00) y Guardar. Con el horario activo, si
+  tocás Encender/Apagar a mano, ese estado vale hasta el próximo cambio
+  programado y después el horario vuelve a mandar. La etiqueta ENCENDIDAS /
+  APAGADAS muestra lo que reporta el nodo (tarda hasta 10 s en tomar el cambio).
 
 El modo automático y los umbrales no aparecen en la web mientras no haya sensor.
 
@@ -138,5 +155,6 @@ El modo automático y los umbrales no aparecen en la web mientras no haya sensor
 | La bomba no arranca con el relé | Verificá si los relés son activos en bajo (ajustá `RELAY_ON`/`RELAY_OFF`). Confirmá paralelo en verde / serie en rojo. |
 | La bomba no enciende desde la web | El nodo tiene que estar en MANUAL; en AUTO queda apagada (no hay sensor). Esperá hasta 10 s, que es cada cuánto consulta al servidor. |
 | La web dice "Sin conexión con el tanque" | El ESP32 perdió WiFi o no llega al servidor. Revisá `WIFI_SSID/PASS` y `SERVER_URL`, y que el servidor esté corriendo. |
+| Las luces no cambian o quedan al revés | El nodo toma el cambio en hasta 10 s. Si están invertidas, el módulo de relé es activo en alto: cambiá `LUCES_ON`/`LUCES_OFF`. Si el horario enciende a una hora rara, el servidor está en otra zona horaria: arrancalo con `TZ=America/Argentina/Buenos_Aires`. |
 | La bomba se apaga sola seguido | El nodo bomba no recibe la radio (fail-safe). Mejorá la antena/posición o bajá la distancia. |
 | Alcance de radio insuficiente | Usá módulos PA/LNA, antena en el techo fuera del housing, y `RF24_250KBPS` (ya configurado). Última opción: cambiar a LoRa. |

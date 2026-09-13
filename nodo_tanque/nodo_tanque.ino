@@ -9,6 +9,9 @@
        comando manual) que ponés desde la página web.
     2. Decide si la bomba debe estar ENCENDIDA o APAGADA.
     3. Envía la orden por radio (NRF24L01) al NODO BOMBA cada segundo.
+    4. Maneja un RELÉ DE LUCES conectado directo al ESP32 (GPIO 26). La web
+       decide si las luces van encendidas o apagadas (a mano o por horario)
+       y el nodo obedece lo que le llega en "luces_on".
 
   Este nodo YA NO MIDE el nivel del tanque (se quitó el sensor ultrasónico).
   Por eso:
@@ -73,6 +76,14 @@ const unsigned long PRUEBA_MS = 5000;  // cada 5 s cambia de estado
 #define PIN_CSN   5
 RF24 radio(PIN_CE, PIN_CSN);
 
+// Relé de las LUCES (un canal, directo al ESP32). GPIO 26 quedó libre al
+// sacar el sensor. El módulo de relé se alimenta con 5V (VIN) y GND común.
+#define PIN_RELE_LUCES  26
+// La mayoría de los módulos de relé son ACTIVOS EN BAJO (LOW = relé pegado).
+// Si al cargar las luces quedan al revés, intercambiá LOW <-> HIGH acá.
+#define LUCES_ON   LOW
+#define LUCES_OFF  HIGH
+
 // Dirección del "tubo" de comunicación. Debe ser IDÉNTICA en el nodo bomba.
 const byte pipeAddress[6] = "TANK1";
 
@@ -83,6 +94,7 @@ const byte pipeAddress[6] = "TANK1";
 String modo        = "AUTO";   // "AUTO" o "MANUAL"
 bool   manualPump  = false;    // en MANUAL: true = encender bomba
 bool   desiredPump = false;    // estado deseado actual de la bomba
+bool   lucesOn     = false;    // estado actual del relé de luces (lo manda la web)
 
 unsigned long tRadio   = 0;
 unsigned long tServer  = 0;
@@ -125,6 +137,11 @@ void setup() {
   Serial.begin(115200);
   delay(200);
 
+  // --- Relé de luces: arranca APAGADO antes de configurar el pin como salida ---
+  digitalWrite(PIN_RELE_LUCES, LUCES_OFF);
+  pinMode(PIN_RELE_LUCES, OUTPUT);
+  aplicarLuces(false);
+
   // --- Radio ---
   iniciarRadio();
 
@@ -155,9 +172,10 @@ void loop() {
     tRadio = ahora;
     decidirBomba();
     enviarOrdenRadio();
-    Serial.printf("Modo: %s | Bomba: %s | Radio: %s | WiFi: %s\n",
+    Serial.printf("Modo: %s | Bomba: %s | Luces: %s | Radio: %s | WiFi: %s\n",
                   modo.c_str(),
                   desiredPump ? "ON" : "OFF",
+                  lucesOn ? "ON" : "OFF",
                   radioOk ? "OK" : "SIN MODULO",
                   WiFi.status() == WL_CONNECTED ? "OK" : "sin conexion");
   }
@@ -181,6 +199,19 @@ void decidirBomba() {
   } else {
     desiredPump = false;        // AUTO sin sensor: no sabemos cuándo está lleno -> APAGADA
   }
+}
+
+// ===========================================================================
+// 6b) RELÉ DE LUCES
+// ===========================================================================
+// Aplica el estado al relé. Si el servidor o el WiFi se caen, las luces quedan
+// como estaban (no hay fail-safe: no es peligroso que sigan prendidas).
+void aplicarLuces(bool on) {
+  if (on != lucesOn) {
+    Serial.printf("Luces -> %s\n", on ? "ENCENDIDAS" : "APAGADAS");
+  }
+  digitalWrite(PIN_RELE_LUCES, on ? LUCES_ON : LUCES_OFF);
+  lucesOn = on;
 }
 
 // ===========================================================================
@@ -256,8 +287,9 @@ void comunicarServidor() {
 
   // Armar el JSON con el estado actual (sin nivel ni distancia: no hay sensor)
   StaticJsonDocument<256> body;
-  body["pump_on"] = desiredPump;
-  body["modo"]    = modo;
+  body["pump_on"]  = desiredPump;
+  body["luces_on"] = lucesOn;           // estado real del relé de luces
+  body["modo"]     = modo;
   body["rssi"]    = WiFi.RSSI();
   // Enlace de radio con la bomba (para el indicador de la web)
   body["radio_ok"]        = radioOk;            // el NRF24 del tanque responde
@@ -295,6 +327,7 @@ void aplicarConfigDelServidor(const String& json) {
 
   if (doc.containsKey("modo"))                modo             = String((const char*)doc["modo"]);
   if (doc.containsKey("manual_pump"))         manualPump       = doc["manual_pump"];
+  if (doc.containsKey("luces_on"))            aplicarLuces((bool)doc["luces_on"]);
 
   // Si la orden cambió, volvemos a reportar enseguida (en ~1,5 s en vez de 10 s)
   // para que la web vea rápido que el nodo tomó el comando y si la bomba lo acusó.

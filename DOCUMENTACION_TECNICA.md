@@ -12,6 +12,7 @@ monitorear y controlar desde el celular o la PC.
    │   • recibe órdenes web   │                             │  • 2 relés             │
    │   • decide qué hacer     │                             │  • acciona la botonera │
    │   • WiFi al servidor     │                             │  • fail-safe           │
+   │   • relé de LUCES        │                             │                        │
    └───────────┬─────────────┘                             └────────────────────────┘
                │ WiFi (HTTP)
                ▼
@@ -42,8 +43,14 @@ Cada segundo:
    el nodo bomba siempre tiene una orden fresca.
 
 3. **Habla con el servidor** por WiFi (cada 10 s): le manda el estado (bomba,
-   modo, señal WiFi) y recibe de vuelta la configuración que pusiste en la web
-   (modo AUTO/MANUAL y comando manual).
+   luces, modo, señal WiFi) y recibe de vuelta la configuración que pusiste en
+   la web (modo AUTO/MANUAL, comando manual y estado de las luces).
+
+4. **Aplica el relé de luces** (GPIO 26) con el `luces_on` que le mandó el
+   servidor. El nodo no decide nada sobre las luces: el servidor resuelve si
+   corresponde encendido manual u horario. Si se cae el WiFi o el servidor, las
+   luces quedan como estaban (no hay fail-safe: no es peligroso que sigan
+   prendidas). Al reiniciar el nodo arrancan apagadas hasta la primera consulta.
 
 ### Modo AUTO vs MANUAL
 
@@ -82,8 +89,15 @@ Es un programa chico que corre en tu servidor. Hace tres cosas:
 
 - Recibe los reportes del ESP32 (`POST /api/status`) y le devuelve la configuración.
 - Sirve la página web de control.
-- Guarda la configuración (modo y umbrales) en `config.json` para que sobreviva
-  a un reinicio.
+- Guarda la configuración (modo, umbrales, luces y su horario) en `config.json`
+  para que sobreviva a un reinicio.
+- Decide el estado de las **luces**: si el horario está activo, calcula con la
+  hora local del servidor si estamos dentro del rango encendido→apagado (puede
+  cruzar medianoche, ej. 20:00 → 06:00). Si tocás Encender/Apagar a mano con el
+  horario activo, ese estado vale hasta el próximo cambio programado
+  (`luces_override`). Sin horario, las luces quedan como las dejes.
+  Si el servidor corre en un hosting en otra zona horaria, hay que arrancarlo
+  con `TZ=America/Argentina/Buenos_Aires`.
 
 La **página web** muestra el nivel con un dibujo del tanque, el estado de la bomba,
 si el tanque está en línea y con cuánta señal, y permite cambiar de modo, encender/
@@ -101,7 +115,7 @@ struct RadioMsg { uint8_t command;  uint32_t seq; };
 **HTTP (ESP32 → servidor)** — el ESP32 hace `POST /api/status` con:
 
 ```json
-{ "pump_on": true, "modo": "MANUAL", "rssi": -67,
+{ "pump_on": true, "luces_on": false, "modo": "MANUAL", "rssi": -67,
   "radio_ok": true, "radio_seq": 37, "radio_ack_ok": true,
   "radio_ack_seq": 37, "radio_ack_hace_s": 0, "radio_ult10": 9 }
 ```
@@ -135,8 +149,13 @@ y el servidor responde con la configuración:
 ```json
 { "modo": "MANUAL", "manual_pump": true,
   "manual_pump_hasta": 1788985533.4, "restante_s": 277, "temporizador_min": 5,
-  "nivel_alto_corte": 80.0, "nivel_bajo_arranque": 30.0 }
+  "nivel_alto_corte": 80.0, "nivel_bajo_arranque": 30.0,
+  "luces_on": true, "luces_manual": false, "luces_horario": true,
+  "luces_hora_on": "19:00", "luces_hora_off": "23:30", "luces_override_hasta": 0 }
 ```
+
+`luces_on` es lo único que el nodo mira para las luces. El resto describe la
+configuración para la web (horario, si hay un cambio manual vigente).
 
 **Encender por N minutos:** desde la web se puede encender la bomba con un
 temporizador (5 min por defecto). El servidor guarda hasta cuándo tiene que

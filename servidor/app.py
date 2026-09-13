@@ -10,6 +10,10 @@
 #    - El nodo tanque reporta cada 10 segundos.
 #    - Modo AUTO: carga por debajo del 30 % y corta al llegar al 80 %.
 #    - Modo MANUAL: la bomba se enciende/apaga desde la web.
+#    - LUCES: relé en el ESP32. Se encienden/apagan a mano desde la web o por
+#      un horario diario (hora de encendido / apagado). El servidor decide y
+#      le manda al nodo "luces_on"; el horario usa la HORA LOCAL del servidor
+#      (si el hosting está en otra zona, correr con TZ=America/Argentina/Buenos_Aires).
 #
 #  Seguridad (pensado para correr en un hosting expuesto a internet):
 #    - Contraseña web hasheada (scrypt via werkzeug). Para cambiarla:
@@ -58,6 +62,8 @@ state = {
     "level_pct": 0,
     "distance_cm": 0,
     "pump_on": False,
+    "luces_on": False,   # estado real del relé de luces (lo reporta el nodo)
+    "luces_cmd_ts": 0,   # cuándo se cambió por última vez desde la web
     "rssi": 0,
     "last_seen": 0,      # timestamp del último reporte
     # --- enlace de radio tanque -> bomba (lo reporta el nodo tanque) ---
@@ -86,6 +92,14 @@ config = {
     "temporizador_min": 5,        # último valor usado en "Encender por N minutos"
     "nivel_alto_corte": 80.0,     # % -> deja de cargar
     "nivel_bajo_arranque": 30.0,  # % -> empieza a cargar
+    # --- luces (relé en el ESP32) ---
+    "luces_manual": False,        # sin horario: True = luces encendidas
+    "luces_horario": False,       # True = seguir el horario diario de abajo
+    "luces_hora_on": "19:00",     # hora local de encendido (HH:MM)
+    "luces_hora_off": "23:30",    # hora local de apagado (HH:MM); puede cruzar medianoche
+    # Si con el horario activo se toca Encender/Apagar a mano, ese estado vale
+    # hasta el próximo cambio programado (después el horario vuelve a mandar).
+    "luces_override": None,       # {"on": bool, "hasta": timestamp} o None
 }
 
 ONLINE_TIMEOUT_S = 25   # el nodo reporta cada 10 s; 25 s sin noticias = offline
@@ -303,8 +317,66 @@ def restante_s():
     return 0
 
 
+# ---------------------------------------------------------------------------
+#  Luces: horario diario + encendido manual
+# ---------------------------------------------------------------------------
+
+def _parsear_hora(texto):
+    """'HH:MM' -> minutos desde la medianoche, o None si no es válida."""
+    try:
+        h, m = str(texto).strip().split(":")
+        h, m = int(h), int(m)
+    except (ValueError, AttributeError):
+        return None
+    if not (0 <= h < 24 and 0 <= m < 60):
+        return None
+    return h * 60 + m
+
+
+def _en_horario(ahora_min, on_min, off_min):
+    """¿Las luces deben estar encendidas a esta hora del día?"""
+    if on_min < off_min:                       # ej. 19:00 -> 23:30
+        return on_min <= ahora_min < off_min
+    return ahora_min >= on_min or ahora_min < off_min   # cruza medianoche, ej. 20:00 -> 06:00
+
+
+def _proximo_cambio_horario(ahora, on_min, off_min):
+    """Timestamp del próximo encendido o apagado programado después de 'ahora'."""
+    lt = time.localtime(ahora)
+    medianoche = time.mktime((lt.tm_year, lt.tm_mon, lt.tm_mday, 0, 0, 0, 0, 0, -1))
+    candidatos = []
+    for dia in (0, 1):
+        for minutos in (on_min, off_min):
+            candidatos.append(medianoche + dia * 86400 + minutos * 60)
+    return min(t for t in candidatos if t > ahora)
+
+
+def luces_deseadas():
+    """Estado que tienen que tener las luces ahora (lo que se le manda al nodo)."""
+    if not config.get("luces_horario"):
+        config["luces_override"] = None
+        return bool(config.get("luces_manual"))
+
+    on_min = _parsear_hora(config.get("luces_hora_on"))
+    off_min = _parsear_hora(config.get("luces_hora_off"))
+    if on_min is None or off_min is None or on_min == off_min:
+        return bool(config.get("luces_manual"))
+
+    ahora = time.time()
+    override = config.get("luces_override")
+    if override:
+        if ahora < (override.get("hasta") or 0):
+            return bool(override.get("on"))
+        config["luces_override"] = None     # venció: vuelve a mandar el horario
+        guardar_config()
+
+    lt = time.localtime(ahora)
+    return _en_horario(lt.tm_hour * 60 + lt.tm_min, on_min, off_min)
+
+
 def config_publica():
-    """Lo que ven la web y el nodo: modo, bomba manual, temporizador y umbrales."""
+    """Lo que ven la web y el nodo: modo, bomba manual, temporizador, umbrales y luces."""
+    override = config.get("luces_override") or {}
     return {
         "modo": config["modo"],
         "manual_pump": config["manual_pump"],
@@ -313,6 +385,13 @@ def config_publica():
         "temporizador_min": config.get("temporizador_min") or 5,
         "nivel_alto_corte": config["nivel_alto_corte"],
         "nivel_bajo_arranque": config["nivel_bajo_arranque"],
+        # --- luces ---
+        "luces_on": luces_deseadas(),             # lo que el nodo tiene que aplicar
+        "luces_manual": bool(config.get("luces_manual")),
+        "luces_horario": bool(config.get("luces_horario")),
+        "luces_hora_on": config.get("luces_hora_on") or "19:00",
+        "luces_hora_off": config.get("luces_hora_off") or "23:30",
+        "luces_override_hasta": override.get("hasta") or 0,
     }
 
 
@@ -337,6 +416,7 @@ def api_status():
     state["level_pct"]   = _numero(data.get("level_pct"), 0, 100, state["level_pct"])
     state["distance_cm"] = _numero(data.get("distance_cm"), 0, 1000, state["distance_cm"])
     state["pump_on"]     = bool(data.get("pump_on", state["pump_on"]))
+    state["luces_on"]    = bool(data.get("luces_on", state["luces_on"]))
     state["rssi"]        = _numero(data.get("rssi"), -120, 0, state["rssi"])
     state["radio_ok"]     = bool(data.get("radio_ok", state["radio_ok"]))
     state["radio_seq"]    = int(_numero(data.get("radio_seq"), 0, 100, state["radio_seq"]))
@@ -401,6 +481,38 @@ def api_control():
             config["temporizador_min"] = minutos
     if "modo" in data or "manual_pump" in data:
         state["cmd_ts"] = time.time()   # para que la web muestre "esperando al nodo"
+
+    # --- Luces: horario diario ---
+    if "luces_horario" in data or "luces_hora_on" in data or "luces_hora_off" in data:
+        hora_on = data.get("luces_hora_on", config["luces_hora_on"])
+        hora_off = data.get("luces_hora_off", config["luces_hora_off"])
+        on_min, off_min = _parsear_hora(hora_on), _parsear_hora(hora_off)
+        if on_min is None or off_min is None:
+            return jsonify({"error": "hora invalida (usar HH:MM)"}), 400
+        if on_min == off_min:
+            return jsonify({"error": "la hora de encendido y la de apagado no pueden ser iguales"}), 400
+        config["luces_hora_on"] = "%02d:%02d" % divmod(on_min, 60)
+        config["luces_hora_off"] = "%02d:%02d" % divmod(off_min, 60)
+        if "luces_horario" in data:
+            config["luces_horario"] = bool(data["luces_horario"])
+        config["luces_override"] = None     # con horario nuevo, manda el horario
+        state["luces_cmd_ts"] = time.time()
+
+    # --- Luces: encender / apagar a mano ---
+    if "luces_on" in data:
+        on = bool(data["luces_on"])
+        config["luces_manual"] = on
+        if config.get("luces_horario"):
+            # Vale hasta el próximo encendido/apagado programado
+            on_min = _parsear_hora(config["luces_hora_on"])
+            off_min = _parsear_hora(config["luces_hora_off"])
+            config["luces_override"] = {
+                "on": on,
+                "hasta": _proximo_cambio_horario(time.time(), on_min, off_min),
+            }
+        else:
+            config["luces_override"] = None
+        state["luces_cmd_ts"] = time.time()
 
     # Umbrales: se validan juntos (el bajo tiene que quedar por debajo del alto)
     if "nivel_alto_corte" in data or "nivel_bajo_arranque" in data:

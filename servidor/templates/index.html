@@ -96,6 +96,27 @@
   .timer-info.hidden { display: none; }
   .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
 
+  /* ---- luces ---- */
+  .luces-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .luces-head h2 { margin-bottom: 0; }
+  .luces-estado { font-size: 14px; font-weight: 700; padding: 6px 12px; border-radius: 999px; }
+  .luces-estado.on  { background: rgba(251,191,36,.18); color: var(--warn); }
+  .luces-estado.off { background: rgba(148,163,184,.15); color: var(--muted); }
+  .luces-estado.wait { background: rgba(251,191,36,.1); color: var(--warn); font-weight: 600; }
+  .btn-luz-on { background: rgba(251,191,36,.18); color: var(--warn); border: 1px solid var(--warn) !important; }
+  .btns button.selected.btn-luz-on { background: var(--warn); color: #451a03; }
+  .horario { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .horario label.sw { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .horario input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--warn); }
+  .horas { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; margin-top: 12px; }
+  .horas .campo { font-size: 12px; color: var(--muted); }
+  .horas input { display: block; width: 100%; margin-top: 4px; padding: 12px 8px; border-radius: 12px; border: 1px solid var(--border);
+                 background: var(--bg); color: var(--text); font-size: 18px; font-weight: 700; text-align: center; }
+  .horas input:focus { outline: none; border-color: var(--accent); }
+  .horas button { padding: 14px 16px; border: 1px solid var(--accent) !important; border-radius: 12px; font-size: 15px; font-weight: 800;
+                  background: rgba(56,189,248,.15); color: var(--accent); cursor: pointer; }
+  .horario-info { margin-top: 10px; font-size: 13px; color: var(--muted); min-height: 16px; }
+
   .meta { font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; }
   .toast {
     position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -158,6 +179,27 @@
     <div class="hint">La bomba arranca ahora y se apaga sola cuando pasa el tiempo (apagar a mano lo cancela).</div>
   </div>
 
+  <div class="card">
+    <div class="luces-head">
+      <h2>💡 Luces</h2>
+      <span id="luces-estado" class="luces-estado off">--</span>
+    </div>
+    <div class="btns">
+      <button id="btn-luz-on"  class="btn-luz-on" onclick="setLuces(true)">Encender</button>
+      <button id="btn-luz-off" class="btn-off"    onclick="setLuces(false)">Apagar</button>
+    </div>
+    <div class="horario">
+      <label class="sw"><input id="chk-horario" type="checkbox" onchange="guardarHorario()"> Horario automático todos los días</label>
+      <div class="horas">
+        <label class="campo">Encender a las<input id="inp-hora-on" type="time" value="19:00"></label>
+        <label class="campo">Apagar a las<input id="inp-hora-off" type="time" value="23:30"></label>
+        <button onclick="guardarHorario()">Guardar</button>
+      </div>
+      <div id="horario-info" class="horario-info"></div>
+    </div>
+    <div class="hint">El relé de luces está en el nodo tanque. Toma el cambio en hasta 10 s. Si el horario está activo, Encender/Apagar a mano vale hasta el próximo cambio programado.</div>
+  </div>
+
   <div class="card meta">
     <span id="last-seen">último reporte: --</span>
     <span>reporta cada 10 s</span>
@@ -203,6 +245,46 @@ function render(s) {
     tinfo.textContent = "⏱ Se apaga sola en " + m + ":" + String(sec).padStart(2, "0");
   } else {
     tinfo.className = "timer-info hidden";
+  }
+  renderLuces(s);
+}
+
+// Luces: la etiqueta muestra lo que el nodo reporta (el relé está en el ESP32).
+function renderLuces(s) {
+  const est = document.getElementById("luces-estado");
+  const deseado = !!cfg.luces_on;
+  if (!s.online) {
+    est.className = "luces-estado off"; est.textContent = "SIN DATOS";
+  } else if (s.luces_on !== deseado) {
+    est.className = "luces-estado wait";
+    est.textContent = "⏳ " + (deseado ? "encendiendo…" : "apagando…");
+  } else {
+    est.className = "luces-estado " + (s.luces_on ? "on" : "off");
+    est.textContent = s.luces_on ? "ENCENDIDAS" : "APAGADAS";
+  }
+  document.getElementById("btn-luz-on").className  = "btn-luz-on" + (deseado ? " selected" : "");
+  document.getElementById("btn-luz-off").className = "btn-off"    + (!deseado ? " selected" : "");
+
+  const chk = document.getElementById("chk-horario");
+  const hOn = document.getElementById("inp-hora-on");
+  const hOff = document.getElementById("inp-hora-off");
+  const editando = [hOn, hOff].includes(document.activeElement);
+  if (!editando) {
+    chk.checked = !!cfg.luces_horario;
+    hOn.value = cfg.luces_hora_on || "19:00";
+    hOff.value = cfg.luces_hora_off || "23:30";
+  }
+  const info = document.getElementById("horario-info");
+  if (cfg.luces_horario) {
+    let txt = "Se encienden a las " + cfg.luces_hora_on + " y se apagan a las " + cfg.luces_hora_off + ".";
+    if (cfg.luces_override_hasta > Date.now() / 1000) {
+      const d = new Date(cfg.luces_override_hasta * 1000);
+      txt += " Cambiado a mano: vuelve al horario a las " +
+        String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0") + ".";
+    }
+    info.textContent = txt;
+  } else {
+    info.textContent = "Horario desactivado: las luces quedan como las dejes.";
   }
 }
 
@@ -312,6 +394,19 @@ async function setBombaPorTiempo() {
   }
 }
 
+async function setLuces(on) {
+  if (await control({ luces_on: on })) toast(on ? "Luces: encender" : "Luces: apagar");
+}
+async function guardarHorario() {
+  const body = {
+    luces_horario: document.getElementById("chk-horario").checked,
+    luces_hora_on: document.getElementById("inp-hora-on").value,
+    luces_hora_off: document.getElementById("inp-hora-off").value,
+  };
+  if (!body.luces_hora_on || !body.luces_hora_off) { toast("Completá las dos horas"); return; }
+  document.activeElement.blur();
+  if (await control(body)) toast(body.luces_horario ? "Horario de luces guardado" : "Horario desactivado");
+}
 
 refresh();
 setInterval(refresh, 2000);

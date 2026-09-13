@@ -73,7 +73,7 @@ Reiniciá el servidor después de editar `config.json`.
 |---|---|---|
 | `POST /api/status` | ESP32: reporta estado, recibe config | header `X-API-Token` |
 | `GET /api/state` | Web: refresca el dashboard | cookie de sesión |
-| `POST /api/control` | Web: cambia modo / bomba manual / `{"manual_pump":true,"minutos":N}` | cookie de sesión |
+| `POST /api/control` | Web: cambia modo / bomba manual / `{"manual_pump":true,"minutos":N}` / luces: `{"luces_on":true}` o `{"luces_horario":true,"luces_hora_on":"19:00","luces_hora_off":"23:30"}` | cookie de sesión |
 | `GET/POST /login`, `GET /logout` | Web | — |
 
 ## Recordatorio del lado del ESP32
@@ -83,3 +83,6 @@ En `nodo_tanque/nodo_tanque.ino`:
 - `API_TOKEN` → igual a `device_token` de `config.json`.
 - WiFi: red `KameHouse` (hardcodeada a propósito).
 - Reporta cada 10 s; umbrales por defecto 30 % / 80 %.
+- Luces: el servidor calcula `luces_on` y el nodo lo aplica al relé del GPIO 26.
+  El horario usa la **hora local del servidor**; si el hosting está en otra
+  zona horaria, correr con `TZ=America/Argentina/Buenos_Aires python app.py`.

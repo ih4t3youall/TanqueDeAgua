@@ -13,6 +13,7 @@ nivel: se quitó el sensor). El nodo de la bomba es esclavo: solo obedece.
 | **Módulo regulador AMS1117 5V→3.3V** | 1 | Alimenta la radio con hasta 800 mA. El regulador del ESP32 no aguanta los picos del módulo PA/LNA (causa #1 de fallas de NRF24). |
 | Fuente 5V 1–2A (o cargador USB) | 1 | Alimentación del nodo por el micro-USB del ESP32. |
 | Capacitor electrolítico 10–100 µF | 1 | Entre VCC y GND del NRF24, pegado al módulo. |
+| **Módulo de relé de 1 canal** (5V, optoacoplado) | 1 | Para las luces. IN al GPIO 26; COM/NO en serie con la fase de las luces. Para cargas grandes, que maneje un contactor. |
 | Caja / housing impreso 3D | 1 | Con la antena del NRF24 hacia afuera del plástico. |
 
 ## Nodo BOMBA (esclavo)
