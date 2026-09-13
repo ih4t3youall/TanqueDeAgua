@@ -43,7 +43,7 @@ juntar todo.
 |---|---|
 | VCC | VIN (5V) |
 | GND | GND común |
-| IN | GPIO 26 |
+| IN | GPIO 25 |
 
 Los contactos **COM** y **NO** van en serie con la fase de las luces, como una
 llave de luz. ⚡ Es tensión de red: cortá la alimentación antes de cablear.

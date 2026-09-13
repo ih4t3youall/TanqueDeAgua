@@ -9,7 +9,7 @@
        comando manual) que ponés desde la página web.
     2. Decide si la bomba debe estar ENCENDIDA o APAGADA.
     3. Envía la orden por radio (NRF24L01) al NODO BOMBA cada segundo.
-    4. Maneja un RELÉ DE LUCES conectado directo al ESP32 (GPIO 26). La web
+    4. Maneja un RELÉ DE LUCES conectado directo al ESP32 (GPIO 25). La web
        decide si las luces van encendidas o apagadas (a mano o por horario)
        y el nodo obedece lo que le llega en "luces_on".
 
@@ -76,11 +76,14 @@ const unsigned long PRUEBA_MS = 5000;  // cada 5 s cambia de estado
 #define PIN_CSN   5
 RF24 radio(PIN_CE, PIN_CSN);
 
-// Relé de las LUCES (un canal, directo al ESP32). GPIO 26 quedó libre al
+// Relé de las LUCES (un canal, directo al ESP32). GPIO 25 quedó libre al
 // sacar el sensor. El módulo de relé se alimenta con 5V (VIN) y GND común.
-#define PIN_RELE_LUCES  26
-// La mayoría de los módulos de relé son ACTIVOS EN BAJO (LOW = relé pegado).
-// Si al cargar las luces quedan al revés, intercambiá LOW <-> HIGH acá.
+#define PIN_RELE_LUCES  25
+// El módulo es de 5 V y ACTIVO EN BAJO (LOW = relé pegado). El pin se configura
+// como OPEN-DRAIN: "apagado" es dejarlo al aire (el módulo lo sube a sus 5 V con
+// su propia resistencia) y "encendido" es tirarlo a GND. Si se manejara como
+// salida normal, el HIGH de 3,3 V del ESP32 deja 1,7 V sobre el optoacoplador
+// del módulo y el relé queda pegado siempre (probado el 2026-09-13).
 #define LUCES_ON   LOW
 #define LUCES_OFF  HIGH
 
@@ -139,7 +142,7 @@ void setup() {
 
   // --- Relé de luces: arranca APAGADO antes de configurar el pin como salida ---
   digitalWrite(PIN_RELE_LUCES, LUCES_OFF);
-  pinMode(PIN_RELE_LUCES, OUTPUT);
+  pinMode(PIN_RELE_LUCES, OUTPUT_OPEN_DRAIN);   // ver nota en LUCES_ON/LUCES_OFF
   aplicarLuces(false);
 
   // --- Radio ---

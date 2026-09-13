@@ -37,7 +37,7 @@ VCC). Si el AMS1117 es el módulo con capacitores incluidos, es opcional.
 |------------------------|----------------|-------|
 | VCC                    | VIN (5V)       | los 5V del USB; no usar el 3V3 |
 | GND                    | GND (común)    | |
-| IN                     | **GPIO 26**    | `PIN_RELE_LUCES` en el código |
+| IN                     | **GPIO 25**    | `PIN_RELE_LUCES` en el código |
 
 Contactos del relé: **COM** y **NO** en serie con la fase de las luces (como si
 fuera la llave de luz). En reposo (nodo apagado o reiniciando) las luces quedan
@@ -50,7 +50,7 @@ intercambiá `LUCES_ON` / `LUCES_OFF` en el `.ino`.
 
 ## 4) Pines libres
 
-GPIO 25 quedó libre (antes ERA ECHO del sensor; el 26 lo usa el relé).
+GPIO 26 quedó libre (el 25 lo usa el relé de luces).
 
 ## 5) Parámetros de radio (deben coincidir con el nodo bomba)
 

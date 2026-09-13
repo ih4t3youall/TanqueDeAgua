@@ -83,6 +83,6 @@ En `nodo_tanque/nodo_tanque.ino`:
 - `API_TOKEN` → igual a `device_token` de `config.json`.
 - WiFi: red `KameHouse` (hardcodeada a propósito).
 - Reporta cada 10 s; umbrales por defecto 30 % / 80 %.
-- Luces: el servidor calcula `luces_on` y el nodo lo aplica al relé del GPIO 26.
+- Luces: el servidor calcula `luces_on` y el nodo lo aplica al relé del GPIO 25.
   El horario usa la **hora local del servidor**; si el hosting está en otra
   zona horaria, correr con `TZ=America/Argentina/Buenos_Aires python app.py`.
